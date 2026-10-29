@@ -1,0 +1,452 @@
+[
+  {
+    "id": "object-not-found",
+    "category": "object-function",
+    "kind": "error",
+    "message": "object 'body_mass_g' not found",
+    "call": "eval(e, env)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\nmean(body_mass_g)"
+  },
+  {
+    "id": "closure-not-subsettable",
+    "category": "object-function",
+    "kind": "error",
+    "message": "object of type 'closure' is not subsettable",
+    "call": "mean[1]",
+    "r_version": "4.5.2",
+    "minimal": "library(dplyr)\nmean[1]"
+  },
+  {
+    "id": "could-not-find-function",
+    "category": "object-function",
+    "kind": "error",
+    "message": "could not find function \"ggplot\"",
+    "call": "ggplot()",
+    "r_version": "4.5.2",
+    "minimal": "ggplot()"
+  },
+  {
+    "id": "na-introduced-coercion",
+    "category": "type-length",
+    "kind": "warning",
+    "message": "NAs introduced by coercion",
+    "call": "eval(e, env)",
+    "r_version": "4.5.2",
+    "minimal": "as.numeric(c(\"182.5\", \"176.0\", \"low\"))"
+  },
+  {
+    "id": "non-numeric-argument",
+    "category": "type-length",
+    "kind": "error",
+    "message": "invalid 'type' (character) of argument",
+    "call": "sum(c(\"182.5\", \"176.0\"))",
+    "r_version": "4.5.2",
+    "minimal": "sum(c(\"182.5\", \"176.0\"))"
+  },
+  {
+    "id": "condition-length-1",
+    "category": "type-length",
+    "kind": "error",
+    "message": "the condition has length > 1",
+    "call": "if (x > 180) \"high\" else \"low\"",
+    "r_version": "4.5.2",
+    "minimal": "x <- c(182, 176, 169)\nif (x > 180) \"high\" else \"low\""
+  },
+  {
+    "id": "no-package-called",
+    "category": "package-env",
+    "kind": "error",
+    "message": "there is no package called 'notapackage9x'",
+    "call": "library(notapackage9x)",
+    "r_version": "4.5.2",
+    "minimal": "library(notapackage9x)"
+  },
+  {
+    "id": "cannot-open-file",
+    "category": "path-encoding",
+    "kind": "error",
+    "message": "'assets/data/does_not_exist.csv' does not exist in current working\ndirectory: 'C:/Users/Choi/Documents/ZCode/bioR'.",
+    "call": "(function (path, write = FALSE, call = caller_env()) ",
+    "r_version": "4.5.2",
+    "minimal": "read_csv(\"assets/data/does_not_exist.csv\")"
+  },
+  {
+    "id": "join-by-missing-column",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "Join columns in `x` must be present in the data.\n✖ Problem with `altitude_grp`.",
+    "call": "left_join(pika, pika, by = \"altitude_grp\")",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\nleft_join(pika, pika, by = \"altitude_grp\")"
+  },
+  {
+    "id": "join-incompatible-type",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "Can't join `x$id_chr` with `y$altitude_m` due to incompatible types.\nℹ `x$id_chr` is a <character>.\nℹ `y$altitude_m` is a <double>.",
+    "call": "left_join(tibble(id_chr = \"P001\"), pika, by = c(id_chr = \"altitude_m\"))",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\ntibble(id_chr = \"P001\") |> left_join(pika, by = c(\"id_chr\" = \"altitude_m\"))"
+  },
+  {
+    "id": "contrasts-factor-one-level",
+    "category": "factor-model",
+    "kind": "error",
+    "message": "contrasts can be applied only to factors with 2 or more levels",
+    "call": "`contrasts<-`(`*tmp*`, value = contr.funs[1 + isOF[nn]])",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\npika$sex <- factor(\"F\", levels = \"F\")\nlm(body_mass_g ~ sex, data = pika)"
+  },
+  {
+    "id": "undefined-columns-selected",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "Can't select columns that don't exist.\n✖ Column `body_mass` doesn't exist.",
+    "call": "select(pika, body_mass)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\npika |> select(body_mass)"
+  },
+  {
+    "id": "replacement-rows",
+    "category": "type-length",
+    "kind": "error",
+    "message": "replacement has 2 rows, data has 3",
+    "call": "`$<-.data.frame`(`*tmp*`, b, value = c(10, 20))",
+    "r_version": "4.5.2",
+    "minimal": "df <- data.frame(a = 1:3)\ndf$b <- c(10, 20)"
+  },
+  {
+    "id": "argument-length-zero",
+    "category": "type-length",
+    "kind": "error",
+    "message": "argument is of length zero",
+    "call": "if (x) \"yes\" else \"no\"",
+    "r_version": "4.5.2",
+    "minimal": "x <- logical(0)\nif (x) \"yes\" else \"no\""
+  },
+  {
+    "id": "filter-typo-object",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "ℹ In argument: `body_mass >= 110`.\nCaused by error:\n! object 'body_mass' not found",
+    "call": "filter(pika, body_mass >= 110)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\npika |> filter(body_mass >= 110)"
+  },
+  {
+    "id": "group-by-case-sensitive",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "Must group by variables found in `.data`.\n✖ Column `Altitude_group` is not found.",
+    "call": "group_by(pika, Altitude_group)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\npika |> group_by(Altitude_group)"
+  },
+  {
+    "id": "summarise-returns-vector",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "ℹ In argument: `m = body_mass_g`.\nℹ In group 1: `altitude_group = \"high\"`.\nCaused by error:\n! `m` must be size 1, not 20.\nℹ To return more or less than 1 row per group, use `reframe()`.",
+    "call": "summarise(group_by(pika, altitude_group), m = body_mass_g)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\npika |> group_by(altitude_group) |> summarise(m = body_mass_g)"
+  },
+  {
+    "id": "pivot-missing-columns",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "Can't select columns that don't exist.\n✖ Column `nothere` doesn't exist.",
+    "call": "pivot_longer(counts, cols = -c(gene_id, gene_name, nothere))",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(tidyr)\ncounts <- read_csv(here::here(\"assets/data/pika_rnaseq_counts.csv\"), show_col_types = FALSE)\ncounts |> pivot_longer(cols = -c(gene_id, gene_name, nothere))"
+  },
+  {
+    "id": "join-by-unquoted",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "object 'sample_id' not found",
+    "call": "eval(e, env)",
+    "r_version": "4.5.2",
+    "minimal": "library(readr); library(dplyr)\npika <- read_csv(here::here(\"assets/data/pika_physiology.csv\"), show_col_types = FALSE)\nleft_join(pika, pika, by = sample_id)"
+  },
+  {
+    "id": "ggplot-mapping-not-aes",
+    "category": "plotting",
+    "kind": "error",
+    "message": "`mapping` must be created by `aes()`.\n✖ You've supplied a tibble.",
+    "call": "ggplot(mtcars, mpg)",
+    "r_version": "4.5.2",
+    "minimal": "library(ggplot2)\nggplot(mtcars, mpg)"
+  },
+  {
+    "id": "ggplot-missing-y",
+    "category": "plotting",
+    "kind": "error",
+    "message": "Problem while setting up geom.\nℹ Error occurred in the 1st layer.\nCaused by error in `compute_geom_1()`:\n! `geom_point()` requires the following missing aesthetics: y.",
+    "call": "geom_point()",
+    "r_version": "4.5.2",
+    "minimal": "library(ggplot2)\nggplot(mtcars, aes(wt)) + geom_point()"
+  },
+  {
+    "id": "ggplot-aes-length",
+    "category": "plotting",
+    "kind": "error",
+    "message": "Problem while computing aesthetics.\nℹ Error occurred in the 1st layer.\nCaused by error in `check_aesthetics()`:\n! Aesthetics must be either length 1 or the same as the data (32).\n✖ Fix the following mappings: `colour`.",
+    "call": "geom_point()",
+    "r_version": "4.5.2",
+    "minimal": "library(ggplot2)\nggplot(mtcars, aes(wt, mpg, colour = c(\"red\", \"blue\"))) + geom_point()"
+  },
+  {
+    "id": "continuous-to-discrete-scale",
+    "category": "plotting",
+    "kind": "error",
+    "message": "Continuous value supplied to a discrete scale.\nℹ Example values: 21, 22.8, 21.4, 18.7, and 18.1.",
+    "call": "scale_colour_manual(values = c(\"red\", \"blue\"))",
+    "r_version": "4.5.2",
+    "minimal": "library(ggplot2)\nggplot(mtcars, aes(wt, mpg, colour = mpg)) + geom_point() + scale_colour_manual(values = c(\"red\", \"blue\"))"
+  },
+  {
+    "id": "facet-missing-variable",
+    "category": "plotting",
+    "kind": "error",
+    "message": "At least one layer must contain all faceting variables: `nothere`\n✖ Plot is missing `nothere`\n✖ Layer 1 is missing `nothere`",
+    "call": "combine_vars(data, params$plot_env, vars, drop = params$drop)",
+    "r_version": "4.5.2",
+    "minimal": "library(ggplot2)\nggplot(mtcars, aes(wt, mpg)) + geom_point() + facet_wrap(~nothere)"
+  },
+  {
+    "id": "t-test-not-enough-y",
+    "category": "modelling",
+    "kind": "error",
+    "message": "not enough 'y' observations",
+    "call": "t.test.default(1:5, numeric(0))",
+    "r_version": "4.5.2",
+    "minimal": "t.test(1:5, numeric(0))"
+  },
+  {
+    "id": "wilcox-x-not-numeric",
+    "category": "modelling",
+    "kind": "error",
+    "message": "'x' must be numeric",
+    "call": "wilcox.test.default(c(\"a\", \"b\"), c(\"c\", \"d\"))",
+    "r_version": "4.5.2",
+    "minimal": "wilcox.test(c(\"a\", \"b\"), c(\"c\", \"d\"))"
+  },
+  {
+    "id": "shapiro-sample-too-small",
+    "category": "modelling",
+    "kind": "error",
+    "message": "sample size must be between 3 and 5000",
+    "call": "shapiro.test(c(1, 2))",
+    "r_version": "4.5.2",
+    "minimal": "shapiro.test(c(1, 2))"
+  },
+  {
+    "id": "quantile-na-no-rm",
+    "category": "modelling",
+    "kind": "error",
+    "message": "missing values and NaN's not allowed if 'na.rm' is FALSE",
+    "call": "quantile.default(c(1, 2, NA), c(0.25, 0.75))",
+    "r_version": "4.5.2",
+    "minimal": "quantile(c(1, 2, NA), c(.25, .75))"
+  },
+  {
+    "id": "glm-y-out-of-range",
+    "category": "modelling",
+    "kind": "error",
+    "message": "y values must be 0 <= y <= 1",
+    "call": "eval(family$initialize)",
+    "r_version": "4.5.2",
+    "minimal": "glm(c(1, 2, 1, 2) ~ c(0, 1, 0, 1), family = binomial)"
+  },
+  {
+    "id": "lm-zero-non-na",
+    "category": "modelling",
+    "kind": "error",
+    "message": "0 (non-NA) cases",
+    "call": "lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...)",
+    "r_version": "4.5.2",
+    "minimal": "x <- c(NA, NA, NA)\ny <- c(NA, NA, NA)\nlm(y ~ x)"
+  },
+  {
+    "id": "tukey-no-factor",
+    "category": "modelling",
+    "kind": "error",
+    "message": "no applicable method for 'TukeyHSD' applied to an object of class \"lm\"",
+    "call": "UseMethod(\"TukeyHSD\")",
+    "r_version": "4.5.2",
+    "minimal": "m <- lm(mpg ~ wt, data = mtcars)\nTukeyHSD(m)"
+  },
+  {
+    "id": "kruskal-one-group",
+    "category": "modelling",
+    "kind": "error",
+    "message": "all observations are in the same group",
+    "call": "kruskal.test.default(c(1, 2, 3), g = factor(c(\"a\", \"a\", \"a\")))",
+    "r_version": "4.5.2",
+    "minimal": "kruskal.test(c(1, 2, 3), g = factor(c(\"a\", \"a\", \"a\")))"
+  },
+  {
+    "id": "lmer-one-level-group",
+    "category": "factor-model",
+    "kind": "error",
+    "message": "grouping factors must have > 1 sampled level",
+    "call": "NULL",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(lme4))\nd <- read_csv(here::here(\"assets/data/pika_repeated.csv\"), show_col_types = FALSE)\nd$one <- \"A\"\nlmer(body_mass_g ~ treatment + (1 | one), data = d)"
+  },
+  {
+    "id": "lmer-no-random-effect",
+    "category": "factor-model",
+    "kind": "error",
+    "message": "No random effects terms specified in formula",
+    "call": "NULL",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(lme4))\nd <- read_csv(here::here(\"assets/data/pika_repeated.csv\"), show_col_types = FALSE)\nlmer(body_mass_g ~ treatment, data = d)"
+  },
+  {
+    "id": "coxph-response-not-surv",
+    "category": "modelling",
+    "kind": "error",
+    "message": "Response must be a survival object",
+    "call": "coxph(status ~ treatment, data = d)",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(survival))\nd <- read_csv(here::here(\"assets/data/pika_survival.csv\"), show_col_types = FALSE)\ncoxph(status ~ treatment, data = d)"
+  },
+  {
+    "id": "survdiff-one-group",
+    "category": "modelling",
+    "kind": "error",
+    "message": "There is only 1 group",
+    "call": "survdiff.fit(y, groups, strata.keep, rho)",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(survival))\nd <- read_csv(here::here(\"assets/data/pika_survival.csv\"), show_col_types = FALSE)\nd <- subset(d, treatment == \"control\")\nsurvdiff(Surv(time_days, status) ~ treatment, data = d)"
+  },
+  {
+    "id": "survfit-response-not-surv",
+    "category": "modelling",
+    "kind": "error",
+    "message": "Response must be a survival object",
+    "call": "survfit.formula(status ~ treatment, data = d)",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(survival))\nd <- read_csv(here::here(\"assets/data/pika_survival.csv\"), show_col_types = FALSE)\nsurvfit(status ~ treatment, data = d)"
+  },
+  {
+    "id": "survreg-invalid-times",
+    "category": "modelling",
+    "kind": "error",
+    "message": "Invalid survival times for this distribution",
+    "call": "survreg(Surv(bad, status) ~ treatment, data = d, dist = \"weibull\")",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(survival))\nd <- read_csv(here::here(\"assets/data/pika_survival.csv\"), show_col_types = FALSE)\nd$bad <- d$time_days\nd$bad[1] <- 0\nsurvreg(Surv(bad, status) ~ treatment, data = d, dist = \"weibull\")"
+  },
+  {
+    "id": "deseq2-not-full-rank",
+    "category": "modelling",
+    "kind": "error",
+    "message": "the model matrix is not full rank, so the model cannot be fit as specified.\n  One or more variables or interaction terms in the design formula are linear\n  combinations of the others and must be removed.\n\n  Please read the vignette section 'Model matrix not full rank':\n\n  vignette('DESeq2')",
+    "call": "checkFullRank(modelMatrix)",
+    "r_version": "4.5.2",
+    "minimal": "suppressPackageStartupMessages(library(DESeq2))\ncounts <- read_csv(here::here(\"assets/data/pika_rnaseq_counts.csv\"), show_col_types = FALSE) |>\n  tibble::column_to_rownames(\"gene_id\")\nmeta <- read_csv(here::here(\"assets/data/pika_rnaseq_metadata_clean.csv\"), show_col_types = FALSE)\nmat <- as.matrix(counts[, meta$sample_id])\nDESeqDataSetFromMatrix(mat, meta, ~ batch + group)"
+  },
+  {
+    "id": "log-negative-warning",
+    "category": "type-length",
+    "kind": "warning",
+    "message": "NaNs produced",
+    "call": "log(c(1, 0, -1))",
+    "r_version": "4.5.2",
+    "minimal": "log(c(1, 0, -1))"
+  },
+  {
+    "id": "mean-character-warning",
+    "category": "type-length",
+    "kind": "warning",
+    "message": "argument is not numeric or logical: returning NA",
+    "call": "mean.default(c(\"182.5\", \"176.0\"))",
+    "r_version": "4.5.2",
+    "minimal": "mean(c(\"182.5\", \"176.0\"))"
+  },
+  {
+    "id": "factor-invalid-level-warning",
+    "category": "factor-model",
+    "kind": "warning",
+    "message": "invalid factor level, NA generated",
+    "call": "`[<-.factor`(`*tmp*`, 3, value = \"mid\")",
+    "r_version": "4.5.2",
+    "minimal": "f <- factor(c(\"low\", \"high\"))\nf[3] <- \"mid\""
+  },
+  {
+    "id": "str-recycle-error",
+    "category": "string",
+    "kind": "error",
+    "message": "Can't recycle `string` (size 2) to match `pattern` (size 3).",
+    "call": "str_replace(c(\"H-5\", \"H-6\"), c(\"H-\", \"X-\", \"Y-\"), \"H\")",
+    "r_version": "4.5.2",
+    "minimal": "library(stringr)\nstr_replace(c(\"H-5\", \"H-6\"), c(\"H-\", \"X-\", \"Y-\"), \"H\")"
+  },
+  {
+    "id": "read-excel-path-missing",
+    "category": "path-encoding",
+    "kind": "error",
+    "message": "`path` does not exist: 'assets/data/does_not_exist.xlsx'",
+    "call": "NULL",
+    "r_version": "4.5.2",
+    "minimal": "library(readxl)\nread_excel(\"assets/data/does_not_exist.xlsx\")"
+  },
+  {
+    "id": "write-dir-missing",
+    "category": "path-encoding",
+    "kind": "error",
+    "message": "Cannot open file for writing:\n* 'C:/Users/Choi/Documents/ZCode/bioR/no_such_dir/out.csv'",
+    "call": "NULL",
+    "r_version": "4.5.2",
+    "minimal": "library(readr)\nwrite_csv(data.frame(a = 1), \"no_such_dir/out.csv\")"
+  },
+  {
+    "id": "matrix-non-conformable",
+    "category": "matrix",
+    "kind": "error",
+    "message": "non-conformable arguments",
+    "call": "matrix(1:6, nrow = 2) %*% matrix(1:6, nrow = 4)",
+    "r_version": "4.5.2",
+    "minimal": "matrix(1:6, nrow = 2) %*% matrix(1:6, nrow = 4)"
+  },
+  {
+    "id": "if-na-condition",
+    "category": "type-length",
+    "kind": "error",
+    "message": "missing value where TRUE/FALSE needed",
+    "call": "if (x[2] > 0) 1 else 0",
+    "r_version": "4.5.2",
+    "minimal": "x <- c(1, NA)\nif (x[2] > 0) 1 else 0"
+  },
+  {
+    "id": "dataframe-differing-rows",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "arguments imply differing number of rows: 3, 2",
+    "call": "data.frame(a = 1:3, b = 1:2)",
+    "r_version": "4.5.2",
+    "minimal": "data.frame(a = 1:3, b = 1:2)"
+  },
+  {
+    "id": "rbind-column-mismatch",
+    "category": "data-shape",
+    "kind": "error",
+    "message": "numbers of columns of arguments do not match",
+    "call": "rbind(deparse.level, ...)",
+    "r_version": "4.5.2",
+    "minimal": "rbind(data.frame(a = 1), data.frame(a = 1, b = 2))"
+  },
+  {
+    "id": "dollar-on-atomic",
+    "category": "object-function",
+    "kind": "error",
+    "message": "$ operator is invalid for atomic vectors",
+    "call": "pika$body_mass",
+    "r_version": "4.5.2",
+    "minimal": "pika <- c(164.6, 158.1, 156.3)\npika$body_mass"
+  }
+]

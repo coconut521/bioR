@@ -1,0 +1,13 @@
+sample_id,group,batch,sex,library_size
+C1,control,batch1,F,542937
+C2,control,batch1,M,599814
+C3,control,batch1,F,645108
+C4,control,batch1,M,547622
+C5,control,batch1,F,604858
+C6,control,batch1,M,563472
+H1,hypoxia,batch2,F,658646
+H2,hypoxia,batch2,M,626867
+H3,hypoxia,batch2,F,583689
+H4,hypoxia,batch2,M,638915
+H5,hypoxia,batch2,F,557799
+H6,hypoxia,batch2,M,575253

@@ -1,0 +1,66 @@
+/* ============================================================
+ * print.css — A4 handout. Source: docs/01 §9, docs/05 §11.
+ * ============================================================ */
+
+@page {
+  size: A4;
+  margin: 18mm 16mm 20mm;
+}
+
+@media print {
+  /* hide interactive furniture */
+  .site-header, .site-footer, .rail, .crumbs, .pager,
+  .cover-actions, .stepper, .ex-btns, .listing-head .lh-actions,
+  .quiz-actions, .plot-stage-head a, .filter-bar, .skip-link,
+  .cover-pager, .chapter-nav-toggle, .drawer, .palette-backdrop,
+  .plot-code > summary { display: none !important; }
+
+  body { background: var(--bio-print-bg); color: var(--bio-print-ink); font-size: 10.5pt; line-height: 1.6; }
+  main.container { padding: 0; max-width: none; }
+  .container { padding: 0; }
+
+  /* chapter: single column, cover on its own page */
+  .chapter-grid { display: block; }
+  .chapter-cover { border: 0; padding: 0; margin-bottom: 0; page-break-after: always; }
+  .cover-number { -webkit-text-stroke: 0; -webkit-text-fill-color: currentColor; opacity: .25; }
+  main h2 { page-break-after: avoid; page-break-before: auto; }
+  h3, h4 { page-break-after: avoid; }
+
+  .note, .tip, .warn, .danger, .stats, .repro, .research,
+  .keypoint, .research-task, .research-log, .example-card, .plot-stage,
+  .data-preview, .card, .quiz, .compare-col, table { page-break-inside: avoid; }
+
+  /* code prints compact with visible line numbers */
+  .listing { border: 1px solid var(--bio-print-line); border-radius: 0; }
+  .listing-head { border-bottom: 1px solid var(--bio-print-line); color: var(--bio-print-mid); }
+  .listing-code { background: var(--bio-print-bg); }
+  .listing-code code { color: var(--bio-print-ink); font-size: 8pt; }
+  .cl { color: var(--bio-print-ink); }
+  .cl::before { color: var(--bio-print-faint); }
+  .cl.is-current, .cl.is-past { background: none; box-shadow: none; }
+  .tok-fn, .tok-num, .tok-str, .tok-kw, .tok-null { color: var(--bio-print-ink); }
+  .tok-cmt { color: var(--bio-print-mid); }
+  .ex-output { background: var(--bio-print-bg); border: 1px solid var(--bio-print-line); }
+  .ex-output pre { color: var(--bio-print-ink); font-size: 8pt; }
+  .ex-output-label { color: var(--bio-print-mid); }
+  .ex-variants pre { background: var(--bio-print-bg); color: var(--bio-print-ink); border: 1px solid var(--bio-print-line); font-size: 8pt; }
+
+  /* explainer prints last frame; quiz prints questions without buttons */
+  .explainer-stage { min-height: 0; }
+  .quiz .quiz-opt { border: 1px solid var(--bio-print-line); }
+  .quiz-explain { border: 1px solid var(--bio-print-line); background: var(--bio-print-bg); }
+
+  .plot-stage-canvas { background: var(--bio-print-bg); padding: 4px 0; }
+  .plot-stage-canvas img { max-width: 100%; }
+  figcaption { color: var(--bio-print-ink); }
+
+  a { color: var(--bio-print-ink); text-decoration: none; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: var(--bio-print-mid); }
+
+  .data-table { font-size: 8.5pt; }
+  code { border-color: var(--bio-print-rule); }
+  .footer-legal, footer { display: none; }
+
+  /* show data preview footnotes */
+  .dp-foot { color: var(--bio-print-mid); }
+}

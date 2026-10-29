@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bioR · 生物科研 R 语言工作台 — 从实验台到论文图</title>
+<meta name="description" content="面向生物学本科生、研究生与实验科研人员的离线 R 教学站：18 章研究路线、7 个专栏、36 张速查表，每章绑定一个真实科研任务与交付物。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="home">
+<main class="container" id="main">
+
+  <!-- ============ Hero ============ -->
+  <section class="home-hero">
+    <div class="hero-copy">
+      <div class="hero-kicker">R FOR BIOLOGY · FROM BENCH TO FIGURE</div>
+      <h1 class="hero-title">把 R 学成一条<br>从实验台到<em>论文图</em>的路线。</h1>
+      <p class="hero-lede">18 章、7 个专栏、36 张速查表。每一章从一个真实的生物科研问题开始，产出一个可保存的交付物，最后拼成一份可复现的研究。所有内容离线可用，双击即开。</p>
+      <div class="hero-actions">
+        <button type="button" class="search-big" data-palette>
+          <span>搜索章节、报错、速查、术语</span><kbd>Ctrl K</kbd>
+        </button>
+        <a class="btn btn-primary" href="#route">进入研究路线 <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="hero-stats" id="hero-stats"></div>
+    </div>
+    <div class="continue-card" id="continue" aria-label="继续学习"></div>
+  </section>
+
+  <!-- ============ 研究路线 ============ -->
+  <section class="home-section" id="route">
+    <div class="section-head">
+      <div>
+        <span class="kicker">RESEARCH ROUTE</span>
+        <h2>四个研究阶段，18 站</h2>
+      </div>
+      <p>进度沿路线填充：绿点为已学完，蓝环为下一站。所有章节共用一条「高原鼠兔低氧适应」研究主线（教学模拟数据）。</p>
+    </div>
+    <div class="route" id="route-list"></div>
+  </section>
+
+  <!-- ============ 面板 ============ -->
+  <section class="home-section">
+    <div class="home-panels">
+      <div class="panel" id="today-task">
+        <span class="kicker">TODAY</span>
+        <h3>今日任务</h3>
+        <p class="empty">正在读取进度…</p>
+      </div>
+      <div class="panel" id="wb-summary">
+        <span class="kicker">WORKBENCH</span>
+        <h3>课题工作台</h3>
+        <p class="empty">正在读取进度…</p>
+      </div>
+      <div class="panel" id="review-panel">
+        <span class="kicker">REVIEW</span>
+        <h3>需要回看</h3>
+        <p class="empty">正在读取进度…</p>
+      </div>
+      <div class="panel" id="recent-updates">
+        <span class="kicker">UPDATES</span>
+        <h3>最近更新</h3>
+        <p class="empty">正在读取进度…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 专题航线 ============ -->
+  <section class="home-section" id="specials">
+    <div class="section-head">
+      <div>
+        <span class="kicker">SIDE QUESTS</span>
+        <h2>七个专栏，七种查法</h2>
+      </div>
+      <p>主线之外的三类补充：查方法（绘图、生信、统计导航）、看反例（数据诊所、代码急救室）、管交付（数据集、工作台）。</p>
+    </div>
+    <div class="specials" id="specials-list"></div>
+  </section>
+
+  <!-- ============ 术语与搜索 ============ -->
+  <section class="home-section">
+    <div class="section-head">
+      <div>
+        <span class="kicker">GLOSSARY</span>
+        <h2>高频术语，一击直达</h2>
+      </div>
+      <p>正文中的术语首次出现会自动带解释；完整术语表按 R / 统计 / 生物分类。</p>
+    </div>
+    <div class="glossary-chips" id="gloss-chips"></div>
+  </section>
+
+</main>
+
+<!-- ============ data ============ -->
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/chapter-config.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/datasets-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/deliverables-data.js"></script>
+<script src="assets/js/data/updates-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<!-- ============ engines ============ -->
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/pages/home.js"></script>
+</body>
+</html>

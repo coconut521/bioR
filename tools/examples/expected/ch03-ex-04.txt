@@ -1,0 +1,4 @@
+[1] "low"  "mid"  "high"
+
+ low  mid high 
+  20   20   20 

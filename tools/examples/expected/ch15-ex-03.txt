@@ -1,0 +1,6 @@
+                             term estimate    SE     p
+treatmenthypoxia treatmenthypoxia   -3.461 8.529 0.693
+timepointT14         timepointT14    4.025 3.405 0.250
+timepointT28         timepointT28   -0.358 3.405 0.917
+           contrast estimate   SE     p
+1 control - hypoxia     3.46 8.53 0.693

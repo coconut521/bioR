@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 15 章 混合效应与重复测量：别把伪重复当独立样本 | bioR</title>
+<meta name="description" content="识别嵌套与重复测量，用 lmer 随机截距避免伪重复；lmerTest、ICC、emmeans、模型比较与 singular fit。数据 pika_repeated.csv，交付 stats_mixed.csv。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch15" data-part="IV">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 15 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 15 · MIXED MODELS</span><span>STAGE IV · ADVANCED</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">15</div>
+          <div class="cover-copy">
+            <h1>混合效应与重复测量：别把伪重复当独立样本</h1>
+            <p class="cover-lede">同一只鼠兔测三次，得到的不是三个独立个体。把 36 行当 36 个 n，误差被低估、p 值被压低——这是生物数据最常见的统计事故。</p>
+            <p class="cover-question"><b>本章科研问题：</b>同一只鼠兔测了 3 次，n 到底是 36 还是 12？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch11 · ch13</span><span>数据 pika_repeated.csv</span><span>交付 stats_mixed.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>识别嵌套结构：测量嵌套于个体、个体嵌套于批次。</li>
+          <li>说清 <code>lm()</code> 与 <code>lmer()</code> 在重复测量数据上的差别。</li>
+          <li>写随机截距模型，读 <code>VarCorr()</code> 与 ICC。</li>
+          <li>用 <code>emmeans()</code> 做校正后的组间比较。</li>
+          <li>知道随机效应组数太少、singular fit 与 p 值自由度该怎么处理。</li>
+        </ul>
+        <p class="small muted">前置：第 11、13 章；数据：<code>pika_repeated.csv</code>（12 只 × 3 次）；交付：<code>stats_mixed.csv</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>低氧课题组在同一批鼠兔上测了三次体重与血红蛋白（T0/T14/T28）。若把 36 行当 36 个独立个体，处理组的 SE 会被低估、自由度虚增；正确做法是把<b>个体</b>放进随机截距，让模型知道「这三行来自同一只鼠兔」。</p>
+      </div>
+
+      <h2>1. 重复测量：一行不是一独立个体</h2>
+      <p>先看轨迹：12 只鼠兔，每只三条线。个体之间的高低差很大，个体内部随时间的变化很小——这正是随机截距要吸收的方差。</p>
+
+      <figure class="plot-stage" data-figure="ch15-trajectories">
+        <div class="plot-stage-head">
+          <span>图 15.1 · 三次访视的个体体重轨迹</span>
+          <a href="../assets/figures/chapters/ch15-trajectories.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch15-trajectories.svg"
+               alt="12 只鼠兔在三次访视的体重轨迹，按处理组分色：每个个体一条细线，粗线加点为组均值；个体间差异明显，组均值变化平缓，提示个体随机截距不可忽略。"
+               width="712" height="480">
+        </div>
+        <figcaption>图 15.1 · 三次访视的个体体重轨迹；n = 12 只 × 3 次 = 36 条测量；细线为个体，粗线为处理组均值；同一只鼠兔的重复测量不独立，分析必须用随机截距（ICC ≈ 0.72）。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch15_trajectories.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <div class="explainer" data-engine="dataframe">
+        <script type="application/json" class="explainer-data">{
+          "question": "36 行数据，为什么只有 12 个独立个体？",
+          "frames": [
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "treatment", "type": "fct" }, { "name": "timepoint", "type": "fct" }, { "name": "body_mass_g", "type": "dbl" } ],
+              "rows": [ ["R01", "control", "T0", "150.2"], ["R01", "control", "T14", "167.0"], ["R01", "control", "T28", "162.3"] ],
+              "highlight": [0, 1, 2], "note": "同一个体 R01 的三次测量：三行共享同一随机截距，不能当三个独立样本。" },
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "treatment", "type": "fct" }, { "name": "timepoint", "type": "fct" }, { "name": "body_mass_g", "type": "dbl" } ],
+              "rows": [ ["R01", "control", "T0", "150.2"], ["R01", "control", "T14", "167.0"], ["R01", "control", "T28", "162.3"], ["R02", "control", "T0", "144.3"] ],
+              "highlight": [0, 1, 2], "note": "36 行 = 12 只 × 3 次；统计单位仍是 id（n = 12），处理组各 6 只。" },
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "rows", "type": "int" }, { "name": "naive_n", "type": "int" } ],
+              "rows": [ ["R01", "3", "3"], ["R02", "3", "3"], ["R03", "3", "3"], ["R04", "3", "3"], ["R05", "3", "3"], ["R06", "3", "3"], ["R07", "3", "3"], ["R08", "3", "3"], ["R09", "3", "3"], ["R10", "3", "3"], ["R11", "3", "3"], ["R12", "3", "3"] ],
+              "highlight": [], "note": "按行数算 n = 36：df 从 10 涨到 34，SE 被低估——同一组均值差看起来「更显著」。这正是伪重复。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. 同一个效应，两种标准误</h2>
+      <p>先用普通 <code>lm()</code> 把 36 行当独立样本，再用 <code>lmer()</code> 加个体随机截距。固定效应估计值不变，但 SE、df 与 p 会变——因为模型终于承认了重复测量。</p>
+
+      <article class="example-card" id="ch15-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：36 行 vs 12 只——lm 与 lmer 的差别</h3>
+          <div class="ex-meta"><span class="tag">lmerTest</span><span class="tag green">统计单位</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch15-ex-01"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(lme4); library(lmerTest)
+})
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"), show_col_types = FALSE) |&gt;
+  mutate(id = factor(id), treatment = factor(treatment), timepoint = factor(timepoint))
+naive &lt;- lm(body_mass_g ~ treatment, data = rep)
+mixed &lt;- lmer(body_mass_g ~ treatment + (1 | id), data = rep)
+nm &lt;- summary(naive)$coefficients["treatmenthypoxia", ]
+mm &lt;- summary(mixed)$coefficients["treatmenthypoxia", ]
+data.frame(
+  model = c("lm: 36 rows", "lmer: 12 ids"),
+  estimate = round(unname(c(nm["Estimate"], mm["Estimate"])), 2),
+  SE = round(unname(c(nm["Std. Error"], mm["Std. Error"])), 2),
+  df = round(c(naive$df.residual, unname(mm["df"])), 1),
+  p = signif(unname(c(nm["Pr(&gt;|t|)"], mm["Pr(&gt;|t|)"])), 2)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch15-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch15-ex-01">         model estimate   SE df    p
+1  lm: 36 rows    -3.46 5.18 34 0.51
+2 lmer: 12 ids    -3.46 8.53 10 0.69</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>估计值相同</b>：处理组平均低约 3.46 g——混合模型没有改效应，只改了误差结构。</li>
+            <li><b>SE 从 5.18 涨到 8.53</b>：承认个体差异后，组均值差的不确定性变大。</li>
+            <li><b>df 从 34 降到 10</b>：独立个体只有 12 只，两组的组间比较自由度约 10。</li>
+            <li><b>p 从 0.51 到 0.69</b>：两种模型都不显著；但错误的模型会让你误以为证据更强。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只报 <code>lm()</code> 的 p 与 df，不说明重复测量；或把 <code>lmer()</code> 的 p 当「更保守」而随意挑选。模型必须由设计决定，不能由结果决定。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 4, "vars": { "rep": "36 × 3" }, "out": "", "note": "读入 12 只 × 3 次的重复测量表", "dataframe": null },
+          { "line": 6, "vars": { "naive": "lm(...)" }, "out": "", "note": "先按 36 个独立样本拟合", "dataframe": null },
+          { "line": 7, "vars": { "mixed": "lmer(...)" }, "out": "", "note": "加入 (1 | id) 随机截距", "dataframe": null },
+          { "line": 10, "vars": {}, "out": "lm: SE 5.18 / df 34；lmer: SE 8.53 / df 10", "note": "效应不变，误差结构被承认", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 方差分解：ICC 告诉你个体有多重要</h2>
+      <p>空模型把体重方差分成两块：个体之间（随机截距）与个体内部（残差）。ICC 是前者占总额的比例——越高，越不能忽略重复测量。</p>
+
+      <article class="example-card" id="ch15-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：VarCorr 与 ICC</h3>
+          <div class="ex-meta"><span class="tag">performance::icc</span><span class="tag blue">方差分配</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch15-ex-02"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(lme4); library(performance)
+})
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"), show_col_types = FALSE) |&gt;
+  mutate(id = factor(id), treatment = factor(treatment), timepoint = factor(timepoint))
+m0 &lt;- lmer(body_mass_g ~ 1 + (1 | id), data = rep)
+vc &lt;- as.data.frame(VarCorr(m0))
+icc &lt;- performance::icc(m0)
+data.frame(
+  component = c("id (between)", "residual (within)", "ICC"),
+  variance = round(c(vc$vcov[1], vc$vcov[2], icc$ICC_adjusted), 3)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch15-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch15-ex-02">          component variance
+1      id (between)  178.409
+2 residual (within)   69.700
+3               ICC    0.719</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>个体方差 178.4</b>：不同鼠兔的基线体重差异很大。</li>
+            <li><b>残差方差 69.7</b>：同一只鼠兔三次测量之间的波动。</li>
+            <li><b>ICC = 0.719</b>：约 72% 的体重方差来自个体之间；忽略个体 = 丢掉大部分结构。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只报 ICC 不解释：ICC 高说明个体差异大，重复测量必须建模；ICC 接近 0 也不代表可以随意把行当独立——还要看设计是否有嵌套。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 4, "vars": { "rep": "36 × 3" }, "out": "", "note": "读入重复测量表", "dataframe": null },
+          { "line": 6, "vars": { "m0": "lmer(... (1 | id))" }, "out": "", "note": "只含随机截距的空模型", "dataframe": null },
+          { "line": 8, "vars": { "icc": "performance::icc(m0)" }, "out": "", "note": "计算个体方差占比", "dataframe": null },
+          { "line": 9, "vars": {}, "out": "id 178.4 / residual 69.7 / ICC 0.719", "note": "约 72% 方差来自个体之间", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>4. 固定效应与事后比较</h2>
+      <p>加入时间点后，处理效应是「调整时间点后的组间差」。<code>emmeans()</code> 给出校正后的边际均值与对比；<code>pairs()</code> 的 p 已经是同一模型下的比较。</p>
+
+      <article class="example-card" id="ch15-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：处理 + 时间点的固定效应</h3>
+          <div class="ex-meta"><span class="tag">emmeans</span><span class="tag green">校正比较</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch15-ex-03"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(lme4); library(lmerTest); library(emmeans)
+})
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"), show_col_types = FALSE) |&gt;
+  mutate(id = factor(id), treatment = factor(treatment), timepoint = factor(timepoint))
+m &lt;- lmer(body_mass_g ~ treatment + timepoint + (1 | id), data = rep)
+coefs &lt;- summary(m)$coefficients
+coefs &lt;- coefs[rownames(coefs) != "(Intercept)", , drop = FALSE]
+data.frame(
+  term = rownames(coefs),
+  estimate = round(coefs[, "Estimate"], 3),
+  SE = round(coefs[, "Std. Error"], 3),
+  p = round(coefs[, "Pr(&gt;|t|)"], 3)
+)
+emm &lt;- emmeans(m, ~ treatment)
+pr &lt;- as.data.frame(pairs(emm))
+data.frame(contrast = as.character(pr$contrast),
+           estimate = round(pr$estimate, 2),
+           SE = round(pr$SE, 2), p = round(pr$p.value, 3))</code></pre>
+        <div class="ex-output" data-output-for="ch15-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch15-ex-03">                             term estimate    SE     p
+treatmenthypoxia treatmenthypoxia   -3.461 8.529 0.693
+timepointT14         timepointT14    4.025 3.405 0.250
+timepointT28         timepointT28   -0.358 3.405 0.917
+           contrast estimate   SE     p
+1 control - hypoxia     3.46 8.53 0.693</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>treatmenthypoxia = −3.46</b>：调整时间点后，低氧组平均低 3.46 g（SE 8.53，p = 0.693）。</li>
+            <li><b>T14 = +4.03 / T28 = −0.36</b>：相对 T0 的变化很小，p 均不显著。</li>
+            <li><b>emmeans 对比</b>：control − hypoxia = 3.46 g，与固定效应一致；SE 相同，说明这是同一模型的边际比较。</li>
+            <li><b>不要</b>把 <code>pairs()</code> 的 p 再乘次数——emmeans 已在该模型框架内比较。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>对重复测量数据跑三次 <code>t.test()</code>：每个时间点单独比较会丢掉个体随机效应，也会重复使用同一批个体。用同一个混合模型 + emmeans。</p>
+        </div>
+      </article>
+
+      <h2>5. 组数太少与模型比较</h2>
+      <p>随机效应不是越多越好：批次只有 2 个水平时，方差估计很不稳定，AIC 反而变差。随机效应的组数太少时，<code>lmer()</code> 常给出 <b>singular fit</b>（方差估成 0）——这不是「模型没问题」，而是数据不支持这个随机效应。</p>
+
+      <article class="example-card" id="ch15-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：加 batch 随机效应，值不值？</h3>
+          <div class="ex-meta"><span class="tag">anova · AIC</span><span class="tag amber">singular fit</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch15-ex-04"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(lme4)
+})
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"), show_col_types = FALSE) |&gt;
+  mutate(id = factor(id), treatment = factor(treatment), batch = factor(batch))
+m1 &lt;- lmer(body_mass_g ~ treatment + (1 | id), data = rep, REML = FALSE)
+m2 &lt;- suppressWarnings(lmer(body_mass_g ~ treatment + (1 | id) + (1 | batch),
+                            data = rep, REML = FALSE))
+cmp &lt;- anova(m1, m2)
+data.frame(
+  model = c("id only", "id + batch"),
+  AIC = round(cmp$AIC, 1),
+  LRT = c(NA, round(cmp$Chisq[2], 2)),
+  p = c(NA, round(cmp$`Pr(&gt;Chisq)`[2], 3)),
+  singular = c(isSingular(m1), isSingular(m2))
+)
+vc &lt;- as.data.frame(VarCorr(m2))
+vc[, c("grp", "vcov")]</code></pre>
+        <div class="ex-output" data-output-for="ch15-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch15-ex-04">       model   AIC  LRT    p singular
+1    id only 287.6   NA   NA    FALSE
+2 id + batch 289.6 0.07 0.79    FALSE
+       grp       vcov
+1       id 149.222234
+2    batch   9.388036
+3 Residual  69.699999</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>AIC 287.6 → 289.6</b>：加 batch 后模型更差；LRT p = 0.79，没有证据支持批次方差。</li>
+            <li><b>batch 方差 9.4</b>：很小，且只有 2 个批次，估计不稳定。</li>
+            <li><b>isSingular 都 FALSE</b>：本例还没到奇异；但若方差被估成 0，<code>isSingular()</code> 会返回 TRUE。</li>
+            <li><b>处理方式</b>：singular fit 时删掉该随机效应或改用固定效应，并在报告中说明——不要静默忽略 warning。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>lmer()</code> 打印 <code>boundary (singular) fit</code> 后继续照常解释。singular fit 说明随机效应方差在边界 0，模型没有估计到它；先简化随机结构，再检查固定效应。</p>
+        </div>
+      </article>
+
+      <h2>6. 交付：stats_mixed.csv</h2>
+      <p>把最终模型的固定效应表写成交付物：term、estimate、SE、95% CI、df、t、p。ICC 一起报告；若处理效应不显著，就如实写「无证据」，而不是换模型直到显著。</p>
+
+      <article class="example-card" id="ch15-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：写出 stats_mixed.csv</h3>
+          <div class="ex-meta"><span class="tag">write_csv</span><span class="tag green">交付物</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch15-ex-05"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(lme4); library(lmerTest); library(performance)
+})
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"), show_col_types = FALSE) |&gt;
+  mutate(id = factor(id), treatment = factor(treatment), timepoint = factor(timepoint))
+m &lt;- lmer(hemoglobin_g_l ~ treatment + timepoint + (1 | id), data = rep)
+coefs &lt;- summary(m)$coefficients
+est &lt;- coefs[, "Estimate"]
+se &lt;- coefs[, "Std. Error"]
+res &lt;- data.frame(
+  term = rownames(coefs),
+  estimate = round(est, 3),
+  SE = round(se, 3),
+  conf_low = round(est - 1.96 * se, 3),
+  conf_high = round(est + 1.96 * se, 3),
+  df = round(coefs[, "df"], 2),
+  t = round(coefs[, "t value"], 2),
+  p = signif(coefs[, "Pr(&gt;|t|)"], 3)
+)
+dir.create(here::here("data"), showWarnings = FALSE)
+write_csv(res, here::here("data/stats_mixed.csv"))
+data.frame(
+  file = "data/stats_mixed.csv",
+  rows = nrow(res),
+  ICC = round(performance::icc(m)$ICC_adjusted, 3),
+  max_p = signif(max(res$p), 2)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch15-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch15-ex-05">                  file rows   ICC max_p
+1 data/stats_mixed.csv    4 0.684  0.35</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>4 行固定效应</b>：截距、treatment、T14、T28；每行都有 SE、95% CI、df、t、p。</li>
+            <li><b>ICC = 0.684</b>：血红蛋白的个体差异仍占大部分方差。</li>
+            <li><b>max_p = 0.35</b>：在本数据中没有显著的处理或时间效应；报告估计与 CI，不宣称「有效」。</li>
+            <li><b>文件位置</b>：<code>data/stats_mixed.csv</code>，与其它章节交付物同一目录。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 <code>summary(m)</code> 的整页文本粘进报告，或把 p 值四舍五入成 0.000。交付表只保留需要的列，p 用科学计数或「&lt;0.001」表述。</p>
+        </div>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：把重复测量模型写进分析脚本</h2>
+        <p>在本章脚本基础上产出 <code>R/15_mixed.R</code> 与交付物。</p>
+        <ol class="task-steps">
+          <li><b>识别单位</b>：确认数据是 12 只 × 3 次；写出统计单位与 n。</li>
+          <li><b>方差分解</b>：空模型 + ICC；解释个体差异是否不可忽略。</li>
+          <li><b>固定效应</b>：treatment + timepoint + (1|id)；用 emmeans 报告校正比较。</li>
+          <li><b>交付</b>：<code>data/stats_mixed.csv</code>；报告中写 ICC、效应量、CI 与「无证据」的结论。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>n 报告为 12 只（或每组 6 只），不是 36 行。</li>
+            <li>模型公式含 <code>(1 | id)</code>；ICC 写进结果。</li>
+            <li>不显著就说「无证据」，不删个体、不换模型凑 p。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: grouping factors must have &gt; 1 sampled level</p>
+        <p><b>病因</b>：随机效应的分组变量只有一个水平（例如所有行都标 <code>one = "A"</code>）。</p>
+        <p><b>修复</b>：检查分组变量；一个水平无法估计方差，删掉该随机效应或改固定效应。</p>
+        <p><b>预防</b>：建模前 <code>table(group)</code>，确认每个随机效应 ≥ 2 个水平。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: No random effects terms specified in formula</p>
+        <p><b>病因</b>：调用 <code>lmer()</code> 却忘了写 <code>(1 | id)</code> 之类的随机项。</p>
+        <p><b>修复</b>：加随机截距，或改用 <code>lm()</code>（如果设计确实独立）。</p>
+        <p><b>预防</b>：先写设计（个体/批次），再写公式；随机项与设计一一对应。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: contrasts can be applied only to factors with 2 or more levels</p>
+        <p><b>病因</b>：固定效应因子只剩一个水平（过滤/子集后常见）。</p>
+        <p><b>修复</b>：<code>droplevels()</code>；确认子集后仍有两个以上组。</p>
+        <p><b>预防</b>：建模前 <code>table(d$group)</code> 检查每组样本。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>统计单位由设计决定，不由行数决定。</b>同一只个体测三次，n 仍是个体数；随机截距把「同一个个体的测量」连在一起。判断一个模型是否合理，先问：它承认了数据里的哪几层嵌套？</p>
+      </div>
+      <div class="repro">
+        <p>本章示例全部由 <code>tools/examples/ch15-ex-*.R</code> 在独立 R 进程中运行；输出由 <code>render-examples.R</code> 注入、<code>check-examples.R</code> 逐字校验——包括 ICC 与 p 值。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Repeated measurements on the same individuals were analysed with linear mixed-effects models including a random intercept for individual (lmerTest; REML), because observations within an individual are not independent; the intraclass correlation coefficient was 0.72 for body mass, and treatment effects were estimated with Satterthwaite degrees of freedom and reported with 95% confidence intervals.</p>
+        <p class="small muted">中文：同一个体的重复测量用含个体随机截距的线性混合模型分析（lmerTest；REML），因为个体内观测不独立；体重 ICC 为 0.72；处理效应用 Satterthwaite 自由度估计，并报告 95% 置信区间。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>重复测量三件事：统计单位是个体（不是行）、模型加随机截距（<code>(1 | id)</code>）、报告 ICC 与校正后的效应。随机效应组数太少会 singular；p 值要看自由度来源；不显著就写「无证据」。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch15">
+        <li><label><input type="checkbox"><span>我能判断一份数据是否存在重复测量/嵌套</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 n 应报个体数而不是行数</span></label></li>
+        <li><label><input type="checkbox"><span>我会写 <code>lmer(y ~ treatment + (1 | id))</code> 并解释随机截距</span></label></li>
+        <li><label><input type="checkbox"><span>我能读 VarCorr 与 ICC，并说明其含义</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 emmeans 做校正后的组间比较</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 singular fit 意味着什么、该怎么处理</span></label></li>
+        <li><label><input type="checkbox"><span>我能把固定效应表写成 CSV 交付物</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch15">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：混合效应与重复测量",
+          "questions": [
+            { "type": "mcq", "q": "12 只鼠兔各测 3 次，共 36 行。统计单位 n 是？",
+              "options": ["36", "12", "6", "3"], "answer": 1,
+              "explain": "独立生物学个体是 12 只；36 是测量次数，不是 n。", "skill": "design", "difficulty": 1 },
+            { "type": "mcq", "q": "重复测量数据用普通 lm() 的主要问题是？",
+              "options": ["估计值一定有偏", "SE 被低估、df 虚增", "无法画图", "R 会报错"], "answer": 1,
+              "explain": "lm 假设行独立；同一id 的多行被当独立，误差低估、自由度虚增。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "给个体加随机截距的 lmer 写法：lmer(y ~ treatment + (1 | ____), data = d)。",
+              "answer": ["id"], "explain": "(1 | id) 表示每个个体有自己的截距。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "ICC = 0.72 说明？",
+              "options": ["处理效应占 72%", "个体间方差约占总方差 72%", "72% 的样本被删除", "模型拟合度 72%"], "answer": 1,
+              "explain": "ICC 是随机截距方差占总方差的比例；越高越不能忽略个体。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "singular fit 只是 warning，可以忽略并照常解释随机效应。",
+              "answer": false,
+              "explain": "singular 表示方差估计在边界 0，随机效应没有被数据支持；要简化模型并说明。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "比较低氧与对照的体重，最合适的做法是？",
+              "options": ["每个时间点分别 t 检验", "lmer + emmeans 校正比较", "只比较 T28", "把 36 行当独立做 lm"], "answer": 1,
+              "explain": "同一模型保留个体随机效应，emmeans 给出校正后的边际比较。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "随机效应分组只有 2 个水平时，方差估计通常很稳定。",
+              "answer": false,
+              "explain": "组数太少时方差估计不稳定，常出现 singular fit 或方差≈0。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：提取随机效应方差。",
+              "code": "as.data.frame(____(m))",
+              "blanks": [ { "answer": ["VarCorr"] } ],
+              "explain": "VarCorr() 返回随机效应与残差方差。", "skill": "syntax", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；报告里同时写 ICC 与 n。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>stats_mixed.csv</code></td><td>固定效应表（term/estimate/SE/95% CI/df/t/p）</td><td>ch17 样本结构分析</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：第 16 章处理「时间到事件」——删失不是缺失，KM 曲线与 Cox 模型会改变你看生存数据的方式。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#mixed-models">速查：混合效应模型</a>
+          <a class="btn" href="../cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+          <a class="btn" href="../clinic.html#case-pseudoreplication">病例：30 个细胞来自 3 只鼠</a>
+          <a class="btn" href="../stats-nav.html">统计导航</a>
+          <a class="btn" href="../datasets.html#pika-repeated">数据集：重复测量</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

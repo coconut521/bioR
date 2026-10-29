@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据诊所：先诊断，再开药 | bioR</title>
+<meta name="description" content="14 个真实分析病例：症状、红旗、诊断、处方、R 修复与预防；六问红旗速筛，按设计/统计/可视化/可复现/组学分类。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="clinic">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 数据诊所</p>
+
+  <header class="special-hero">
+    <span class="kicker">DATA CLINIC · 14 CASES</span>
+    <h1>数据诊所</h1>
+    <p class="lede">分析出了问题，往往不是代码报错，而是设计与统计的「慢性病」。先对症状，再看红旗，最后照处方改。</p>
+    <div class="cover-meta"><span>14 个病例</span><span>5 类分诊</span><span>6 面红旗</span><span>R 修复处方</span></div>
+  </header>
+
+  <section>
+    <h2>红旗速筛</h2>
+    <p class="small muted">六个是非题，全部来自下面的真实病例。答「否 / 不确定」会推荐对应病例；这不是评分，只是一次体检。</p>
+    <div class="flag-grid">
+      <!-- CLINIC_FLAGS_START -->
+<div class="flag-card" data-cases="pseudoreplication">
+  <h3><span>1</span>你的 n 是独立生物学个体吗（而不是细胞、孔或切片）？</h3>
+  <div class="flag-opts" role="group" aria-label="你的 n 是独立生物学个体吗（而不是细胞、孔或切片）？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+
+<div class="flag-card" data-cases="batch-confounded">
+  <h3><span>2</span>处理组与对照组是否都覆盖了多个批次？</h3>
+  <div class="flag-opts" role="group" aria-label="处理组与对照组是否都覆盖了多个批次？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+
+<div class="flag-card" data-cases="multiple-testing,pairwise-t">
+  <h3><span>3</span>三组以上比较时，是否做了整体检验与多重比较校正？</h3>
+  <div class="flag-opts" role="group" aria-label="三组以上比较时，是否做了整体检验与多重比较校正？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+
+<div class="flag-card" data-cases="outlier-after-p,optional-stopping">
+  <h3><span>4</span>排除/清洗规则是否在看结果之前就已确定？</h3>
+  <div class="flag-opts" role="group" aria-label="排除/清洗规则是否在看结果之前就已确定？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+
+<div class="flag-card" data-cases="manual-figure,bar-sem">
+  <h3><span>5</span>图是否由代码从数据直接生成（而不是手工改图）？</h3>
+  <div class="flag-opts" role="group" aria-label="图是否由代码从数据直接生成（而不是手工改图）？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+
+<div class="flag-card" data-cases="bar-sem,optional-stopping">
+  <h3><span>6</span>报告是否包含效应量与 95% CI（而不只是 p 值）？</h3>
+  <div class="flag-opts" role="group" aria-label="报告是否包含效应量与 95% CI（而不只是 p 值）？">
+    <button type="button" class="flag-btn" data-val="yes" aria-pressed="false">是</button>
+    <button type="button" class="flag-btn" data-val="no" aria-pressed="false">否</button>
+    <button type="button" class="flag-btn" data-val="unsure" aria-pressed="false">不确定</button>
+  </div>
+</div>
+<!-- CLINIC_FLAGS_END -->
+    </div>
+    <div class="flag-result" id="flag-result" aria-live="polite" hidden>
+      <h3>建议先读</h3>
+      <div class="flag-result-list" id="flag-result-list"></div>
+      <button type="button" class="btn" id="flag-reset">重新体检</button>
+    </div>
+  </section>
+
+  <div class="filter-bar" aria-label="按类别筛选病例">
+    <div class="filter-chips" id="clinic-cats">
+      <button type="button" class="filter-chip active" data-cat="">全部</button>
+      <button type="button" class="filter-chip" data-cat="design">设计</button>
+      <button type="button" class="filter-chip" data-cat="stats">统计</button>
+      <button type="button" class="filter-chip" data-cat="viz">可视化</button>
+      <button type="button" class="filter-chip" data-cat="repro">可复现</button>
+      <button type="button" class="filter-chip" data-cat="omics">组学</button>
+    </div>
+    <p class="small muted" id="clinic-count">14 个病例</p>
+  </div>
+
+  <div class="clinic-grid" id="clinic-grid">
+    <!-- CLINIC_CASES_START -->
+<article class="clinic-card" id="case-pseudoreplication" data-cat="design">
+  <div class="cl-head">
+    <span class="tag">设计</span>
+    <span class="tag blue">CASE 01</span>
+    <h3>30 个细胞来自 3 只鼠，n 是多少？</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>处理组 15 个细胞 vs 对照组 15 个细胞，t 检验 p = 0.001，结论「处理显著」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">把细胞、孔或切片当成独立生物学重复。</dd>
+    <dt>诊断</dt><dd>细胞嵌套在个体内；以细胞为 n 会低估误差、放大自由度，p 值被虚假压低。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>统计单位是个体：先按 mouse 汇总，每组 n = 3</li><li>或用混合模型，把 cell 嵌套于 mouse</li><li>图和表报告个体数 n，而不是细胞数</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(lme4)
+m &lt;- lmer(value ~ group + (1 | mouse), data = d)
+summary(m)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>实验设计时先写下统计单位、生物学重复数与技术重复数。</p>
+    <div class="cl-links"><a href="chapters/ch15-mixed-models.html">ch15 · 混合模型</a><a class="sheet-link" href="cheatsheets.html#table1">速查 · 描述统计与 Table 1</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-batch-confounded" data-cat="design">
+  <div class="cl-head">
+    <span class="tag">设计</span>
+    <span class="tag blue">CASE 02</span>
+    <h3>处理组全在批次 1，对照组全在批次 2</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>PCA 上两组完全分开，差异基因上千；结论「处理效应很强」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">处理与批次完全重合，效应无法分离。</dd>
+    <dt>诊断</dt><dd>批次是混杂变量；模型里加 batch 会与 group 共线，参数无法估计。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>重做实验：每组跨批次并随机化</li><li>若无法重做，只能把结论降级为「批次/处理混合效应」</li><li>记录批次，在下次设计中分层</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r"># 设计阶段随机化，而不是事后建模补救
+set.seed(1)
+assign &lt;- sample(rep(c("ctrl", "trt"), each = 3))</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>上机/建库前按批次分层随机化，确保每组覆盖多个批次。</p>
+    <div class="cl-links"><a href="chapters/ch15-mixed-models.html">ch15 · 混合模型</a><a href="chapters/ch18-rnaseq.html">ch18 · DESeq2</a><a class="sheet-link" href="cheatsheets.html#figure-qc">速查 · 图形质检清单</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-optional-stopping" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 03</span>
+    <h3>p = 0.06，再补 3 个样本，p = 0.04</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>第一次分析 p = 0.06；补到 n = 13 后 p = 0.04，报告「显著」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">看到结果后继续加样本（可选停止），未做校正。</dd>
+    <dt>诊断</dt><dd>反复看结果、多次检验会抬高 I 类错误；最终 p 不是预先设计下的 p。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>预先定样本量与停止规则</li><li>报告全部阶段与所有检验</li><li>把补样本后的结果标为探索性</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r"># 事前做功效分析，而不是事后补样本
+library(pwr)
+pwr.t.test(d = 0.8, power = 0.8, sig.level = 0.05)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>分析计划先写死 n、主要终点与停止规则。</p>
+    <div class="cl-links"><a href="chapters/ch11-two-group.html">ch11 · 两组比较</a><a class="sheet-link" href="cheatsheets.html#power">速查 · 样本量与功效</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-multiple-testing" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 04</span>
+    <h3>20 个基因逐个 t 检验，3 个 p &lt; 0.05</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>20 个基因分别做两组 t 检验，3 个 p &lt; 0.05，挑出来当「差异基因」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">多重比较未校正，且只报告显著者。</dd>
+    <dt>诊断</dt><dd>20 次检验期望约 1 个假阳性；未校正的 p 不能作为基因列表依据。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>BH/FDR 校正：p.adjust(p, method = "BH")</li><li>或统一模型（limma / DESeq2）</li><li>报告全部基因与校正阈值</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">p &lt;- c(0.01, 0.04, 0.03, 0.2, 0.6)
+p_adj &lt;- p.adjust(p, method = "BH")
+data.frame(p, p_adj)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>分析前定好检验家族与 FDR 阈值。</p>
+    <div class="cl-links"><a href="chapters/ch11-two-group.html">ch11 · 两组比较</a><a href="chapters/ch18-rnaseq.html">ch18 · DESeq2</a><a class="sheet-link" href="cheatsheets.html#power">速查 · 样本量与功效</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-skewed-t" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 05</span>
+    <h3>血红蛋白右偏，直接做 t 检验</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>两组血红蛋白分布右偏、各有离群值；t 检验 p = 0.03，报告均值差。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">未看分布就选 t 检验，并用均值概括偏态数据。</dd>
+    <dt>诊断</dt><dd>t 检验对偏态与离群值敏感；小样本下方差估计不稳。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>先画分布/QQ；偏态用中位数(IQR)</li><li>改用 Wilcoxon 秩和或对数变换</li><li>报告效应量与 CI</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">wilcox.test(hb ~ group, data = d, conf.int = TRUE)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>描述统计前先看图，按分布形状选检验。</p>
+    <div class="cl-links"><a href="chapters/ch10-descriptive.html">ch10 · 分布与描述</a><a href="chapters/ch11-two-group.html">ch11 · 两组比较</a><a class="sheet-link" href="cheatsheets.html#table1">速查 · 描述统计与 Table 1</a><a class="sheet-link" href="cheatsheets.html#figure-qc">速查 · 图形质检清单</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-outlier-after-p" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 06</span>
+    <h3>先看 p 值，再决定删哪个离群值</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>初版 p = 0.08；删掉 1 个「离群点」后 p = 0.03，报告后者。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">排除规则在看到结果之后才定。</dd>
+    <dt>诊断</dt><dd>事后排除会制造想要的结论；p 值不再可信。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>预设离群规则（技术原因或 |z| &gt; 3）</li><li>报告敏感性分析：删/不删两种结果</li><li>保留原始数据与排除日志</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">d$outlier &lt;- abs(scale(d$value)) &gt; 3
+# 报告 with / without
+t.test(value ~ group, data = d)
+t.test(value ~ group, data = subset(d, !outlier))</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>数据清理规则在揭盲/看结果前写进分析计划。</p>
+    <div class="cl-links"><a href="chapters/ch10-descriptive.html">ch10 · 分布与描述</a><a href="chapters/ch06-wrangling.html">ch06 · dplyr 整形</a><a class="sheet-link" href="cheatsheets.html#figure-qc">速查 · 图形质检清单</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-bar-sem" data-cat="viz">
+  <div class="cl-head">
+    <span class="tag">可视化</span>
+    <span class="tag blue">CASE 07</span>
+    <h3>柱状图 + SEM，看起来两组差很多</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>柱高表示均值，误差线 SEM；n = 3，读者以为差异很大。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">柱状图掩盖分布；SEM 不是 95% CI。</dd>
+    <dt>诊断</dt><dd>柱形把数据压缩成均值，隐藏偏态/离群；SEM 随 n 缩小，容易误导。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>改箱线图/点图/雨云图，显示每个点</li><li>误差线用 95% CI 并标 n</li><li>图注写清统计量定义</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(ggplot2)
+ggplot(d, aes(group, value)) +
+  geom_boxplot(width = .4, outlier.shape = NA) +
+  geom_jitter(width = .08, alpha = .6)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>先画原始点，再决定是否叠加汇总。</p>
+    <div class="cl-links"><a href="chapters/ch08-ggplot2.html">ch08 · ggplot2</a><a class="sheet-link" href="cheatsheets.html#geom-choice">速查 · geom 选择</a><a class="sheet-link" href="cheatsheets.html#figure-qc">速查 · 图形质检清单</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-pairwise-t" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 08</span>
+    <h3>三组两两 t 检验，挑出显著的一对</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>低/中/高三组做 3 次 t 检验，只有低 vs 高 p &lt; 0.05，结论「低海拔与高海拔不同」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">三组以上未做整体检验与多重校正。</dd>
+    <dt>诊断</dt><dd>多次两两比较抬高假阳性；缺少整体模型。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>先做 ANOVA / Kruskal 整体检验</li><li>事后用 Tukey / Dunn 校正</li><li>报告整体 p 与校正后的两两 p</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">m &lt;- aov(value ~ group, data = d)
+summary(m)
+TukeyHSD(m)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>组数 ≥ 3 时先定整体检验与事后方法。</p>
+    <div class="cl-links"><a href="chapters/ch12-anova.html">ch12 · ANOVA</a><a class="sheet-link" href="cheatsheets.html#report-sentences">速查 · 统计报告句型</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-ecological-fallacy" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 09</span>
+    <h3>把分组相关当个体相关</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>按海拔组算均值，发现「海拔越高 Hb 越高」；个体层面却几乎无关。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">用组均值推断个体（生态学谬误 / Simpson）。</dd>
+    <dt>诊断</dt><dd>组间趋势与组内趋势可能相反；聚合会丢失个体变异。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>个体层面建模，结论只针对个体</li><li>组均值趋势仅作描述，不用于个体推断</li><li>需要组效应时用足够组数的混合模型</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">lm(hb ~ altitude, data = d)              # 个体层面
+aggregate(hb ~ altitude_group, d, mean)  # 组层面，仅描述</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>明确推断层级：结论针对个体还是组。</p>
+    <div class="cl-links"><a href="chapters/ch13-regression.html">ch13 · 回归</a><a href="chapters/ch15-mixed-models.html">ch15 · 混合模型</a><a class="sheet-link" href="cheatsheets.html#report-sentences">速查 · 统计报告句型</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-ordinal-continuous" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 10</span>
+    <h3>有序评分当连续变量做线性回归</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>疼痛评分 0–4 直接 lm，报告「每升 1 分疼痛增加 …」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">有序分类被当成等距连续变量。</dd>
+    <dt>诊断</dt><dd>等级间距不一定相等；线性模型假设不成立。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>有序模型（累积链接）或非参数检验</li><li>报告中位数与分布</li><li>不要解释「每 1 分」的线性斜率</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(MASS)
+polr(factor(score, ordered = TRUE) ~ group, data = d, Hess = TRUE)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>变量的测量尺度决定模型类型。</p>
+    <div class="cl-links"><a href="chapters/ch13-regression.html">ch13 · 回归</a><a class="sheet-link" href="cheatsheets.html#data-dictionary">速查 · 数据字典模板</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-survival-censoring" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 11</span>
+    <h3>生存分析把删失样本删掉</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>到终点仍存活的个体被剔除，KM 曲线下降更快，组间 p 更小。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">删失被当作缺失删除。</dd>
+    <dt>诊断</dt><dd>删失个体仍提供「至少活到某时」的信息；删除造成选择偏倚。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>保留删失：Surv(time, event)</li><li>KM 曲线 + log-rank；Cox 报告 HR/CI</li><li>说明删失原因与比例</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(survival)
+fit &lt;- survfit(Surv(time, event) ~ group, data = d)
+plot(fit)
+survdiff(Surv(time, event) ~ group, data = d)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>随访数据记录事件/时间/删失原因，分析时全部纳入。</p>
+    <div class="cl-links"><a href="chapters/ch16-survival.html">ch16 · 生存分析</a><a class="sheet-link" href="cheatsheets.html#report-sentences">速查 · 统计报告句型</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-counts-pca" data-cat="omics">
+  <div class="cl-head">
+    <span class="tag">组学</span>
+    <span class="tag blue">CASE 12</span>
+    <h3>原始 counts 直接 PCA，第一轴是批次</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>PCA 第一轴把样本按建库批次分开，却被解释为「处理效应」。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">未做表达量变换/归一化，技术偏差主导。</dd>
+    <dt>诊断</dt><dd>counts 方差随均值增长，高表达基因支配 PCA；批次未校正。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>logCPM / VST 稳定方差</li><li>PCA 前检查批次并校正（removeBatchEffect）</li><li>用归一化后的矩阵</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(edgeR)
+lcpm &lt;- cpm(y, log = TRUE)
+pca &lt;- prcomp(t(lcpm), scale. = TRUE)</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>组学分析先归一化/变换，再看整体结构。</p>
+    <div class="cl-links"><a href="chapters/ch17-multivariate.html">ch17 · PCA 与聚类</a><a class="sheet-link" href="cheatsheets.html#figure-qc">速查 · 图形质检清单</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-overfit" data-cat="stats">
+  <div class="cl-head">
+    <span class="tag">统计</span>
+    <span class="tag blue">CASE 13</span>
+    <h3>n = 10，8 个预测变量</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>R² = 0.92，所有预测变量显著；新样本预测一塌糊涂。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">样本量远小于变量数，未做验证。</dd>
+    <dt>诊断</dt><dd>过拟合：模型记住噪声；系数与 p 值不稳定。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>减少变量或先降维（PCA）</li><li>正则化（ridge / lasso）</li><li>交叉验证评估预测</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(glmnet)
+cv.glmnet(x, y, alpha = 1)  # lasso + CV</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>先算样本量/事件数，再定变量上限；预注册主要模型。</p>
+    <div class="cl-links"><a href="chapters/ch13-regression.html">ch13 · 回归</a><a class="sheet-link" href="cheatsheets.html#power">速查 · 样本量与功效</a></div>
+  </div>
+</article>
+
+<article class="clinic-card" id="case-manual-figure" data-cat="repro">
+  <div class="cl-head">
+    <span class="tag">可复现</span>
+    <span class="tag blue">CASE 14</span>
+    <h3>图是手改的，报告不可重跑</h3>
+  </div>
+  <dl class="cl-rows">
+    <dt>症状</dt><dd>PPT 里把误差线拉长、颜色改掉；换数据后图没更新。</dd>
+    <dt class="red">红旗</dt><dd class="red-flag">图与数据脱节，无代码、无版本。</dd>
+    <dt>诊断</dt><dd>手工编辑不可复现，审稿/复审无法追溯。</dd>
+    <dt>处方</dt><dd><ol class="cl-rx-list"><li>图由 R 脚本生成，数据和代码同版本</li><li>Quarto/Rmd 一键渲染</li><li>导出 SVG/PDF 并记录 sessionInfo</li></ol></dd>
+  </dl>
+  <div class="cl-code">
+    <div class="cl-label">R 修复</div>
+    <pre class="ex-code"><code class="r">library(ggplot2)
+p &lt;- ggplot(d, aes(group, value)) + geom_boxplot()
+ggsave("fig/fig1.svg", p, width = 89, height = 55, units = "mm")</code></pre>
+  </div>
+  <div class="cl-foot">
+    <p class="cl-prevent"><b>预防</b>从第一张图开始就用代码生成，禁止手工改图。</p>
+    <div class="cl-links"><a href="chapters/ch14-reproducible.html">ch14 · 可复现报告</a><a class="sheet-link" href="cheatsheets.html#quarto">速查 · Quarto / R Markdown</a></div>
+  </div>
+</article>
+<!-- CLINIC_CASES_END -->
+  </div>
+  <div class="empty-state" id="clinic-empty" hidden><p>这个类别还没有病例——点「全部」看 14 个。</p></div>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="stats-nav.html">统计导航：选检验</a>
+      <a class="btn" href="triage.html">代码急救室：看报错</a>
+      <a class="btn" href="cheatsheets.html#table1">速查：Table 1</a>
+      <a class="btn" href="project.html">课题工作台</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/clinic-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/clinic.js"></script>
+</body>
+</html>

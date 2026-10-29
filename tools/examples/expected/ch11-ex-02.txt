@@ -1,0 +1,6 @@
+# A tibble: 1 × 2
+  estimate p.value
+     <dbl>   <dbl>
+1     3.20 0.00246
+student   welch 
+ 0.0467  0.0479 

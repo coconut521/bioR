@@ -1,0 +1,3 @@
+                      test value lower upper       p
+1                 log-rank  6.67    NA    NA 0.00983
+2 Cox HR: treatmenthypoxia  2.13  1.19  3.84 0.01140

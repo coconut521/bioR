@@ -1,0 +1,2 @@
+                  file rows   ICC max_p
+1 data/stats_mixed.csv    4 0.684  0.35

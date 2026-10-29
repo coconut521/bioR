@@ -1,0 +1,8 @@
+# A tibble: 3 × 6
+  altitude_group     n  mean    sd median   iqr
+  <chr>          <int> <dbl> <dbl>  <dbl> <dbl>
+1 high              20  168.  16.3   171.  13.9
+2 low               20  180.  15.9   182.  21  
+3 mid               20  179.  16.5   177.   9.5
+  mean median     sd    iqr 
+ 164.3  162.8   15.9   15.5 

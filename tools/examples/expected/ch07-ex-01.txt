@@ -1,0 +1,9 @@
+[1] 2000   14
+[1] 12  5
+[1] 24000     4
+# A tibble: 3 × 4
+  gene_id gene_name sample_id count
+  <chr>   <chr>     <chr>     <dbl>
+1 G00001  Pk0001    C1           54
+2 G00001  Pk0001    C2          100
+3 G00001  Pk0001    C3          105

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>章节模板 | bioR</title>
+<meta name="description" content="bioR 章节骨架模板：包含全部必需块（封面、目标、研究情境、任务、常见错误、统计判断、方法学、小结、自测、测验、研究日志、延伸）。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<!--
+  章节模板使用说明（复制本文件到 chapters/chNN-topic.html 后）：
+  1. 改 <title>、<meta description>、body 的 data-chapter / data-part。
+  2. 依 docs/03-curriculum.md 填封面（编号、标题、科研问题、时长、数据、交付物）。
+  3. 每个 Listing 的 data-example 命名为 chNN-ex-NN，并在 tools/examples/ 建同名 .R；
+     输出由 render-examples.R 注入（__EXPECTED_<id>__ 占位），禁止手写。
+  4. 图的 data-figure 必须在 tools/figures/registry.R 注册过。
+  5. 写完运行：Rscript tools/render-examples.R && Rscript tools/check-examples.R
+     && node tools/build-search-index.mjs && node tools/validate.mjs
+-->
+<body data-page="chapter" data-chapter="ch00" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 章节模板</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <!-- ======== 1. 封面 ======== -->
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 00 · TEMPLATE</span><span>bioR RESEARCH ROUTE</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">00</div>
+          <div class="cover-copy">
+            <h1>第 0 章 章节模板</h1>
+            <p class="cover-lede">展示一章应有的全部积木；作者复制后逐块替换。</p>
+            <p class="cover-question"><b>本章科研问题：</b>把原始表整理成一张可分析的表，需要哪几步？</p>
+            <div class="cover-meta">
+              <span>70 MIN</span><span>前置 无</span><span>数据 pika_physiology.csv</span><span>交付 table1_group.csv</span>
+            </div>
+            <div class="cover-actions"><!-- chapter.js 注入：标记完成 / 下载本章脚本 / 打印 --></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ======== 2. 学习目标（mastery.js 注入三态按钮） ======== -->
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>说出一章必须包含的 13 个块及其顺序。</li>
+          <li>为代码卡写 <code>data-example</code> 并与 <code>tools/examples/</code> 对应。</li>
+          <li>用统计正确性规则检查自己的草稿。</li>
+        </ul>
+        <p class="small muted">前置：无；数据：<code>pika_physiology.csv</code>；交付：见封面。</p>
+      </section>
+
+      <!-- ======== 3. 研究情境 ======== -->
+      <div class="research">
+        <p>课题第一天，导师把 60 行的测量表交给你：「先告诉我三个海拔点的体重各是多少，别急着做检验。」这一章教你把原始表整理成能回答这句话的汇总表。</p>
+      </div>
+
+      <!-- ======== 4. 正文小节 ======== -->
+      <h2>1. 一行一个动作：代码卡怎么写</h2>
+      <p>每个代码卡只讲一个动作。代码必须与 <code>tools/examples/</code> 中的脚本一致，输出由脚本生成。</p>
+
+      <article class="example-card" id="tmpl-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：读入数据并查看前几行</h3>
+          <div class="ex-meta"><span class="tag">readr::read_csv</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="tmpl-ex-01"><code class="r">library(readr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika</code></pre>
+        <div class="ex-output" data-output-for="tmpl-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="tmpl-ex-01"># A tibble: 60 × 11
+   id    altitude_m altitude_group sex   body_mass_g body_length_mm
+   &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;       &lt;dbl&gt;          &lt;dbl&gt;
+ 1 P001        3200 low            F            165.           184.
+ 2 P002        3200 low            F            158.           187.
+ 3 P003        3200 low            F            156.           181.
+ 4 P004        3200 low            F            190.           212.
+ 5 P005        3200 low            F            186.           204.
+ 6 P006        3200 low            F            162.           190.
+ 7 P007        3200 low            F            194.           193.
+# ... (6 more lines; full output: expected/tmpl-ex-01.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：载入读数据的包。</li>
+            <li><b>第 2–3 行</b>：<code>here::here()</code> 从项目根目录出发找文件，避免 <code>setwd()</code>；<code>show_col_types = FALSE</code> 关闭列规格消息，保持输出干净。</li>
+            <li><b>第 4 行</b>：tibble 默认只打印前 10 行，并标注每列类型。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <pre><code class="r">pika &lt;- read.csv(here::here("assets/data/pika_physiology.csv"))
+head(pika)</code></pre>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>read.csv()</code> 会把字符串列自动转因子（R &lt; 4.0）或改列名（<code>check.names</code>），与 <code>read_csv()</code> 行为不同；教学代码统一用 <code>readr</code>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "载入 readr", "pipeline": { "rows": 0, "cols": 0 } },
+          { "line": 2, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入 60 行 × 11 列", "pipeline": { "rows": 60, "cols": 11 } },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "打印前 10 行", "note": "tibble 的打印方式", "pipeline": { "rows": 60, "cols": 11 } }
+        ] }</script>
+      </article>
+
+      <article class="example-card" id="tmpl-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：按海拔汇总体重（Table 1 的雏形）</h3>
+          <div class="ex-meta"><span class="tag">dplyr::summarise</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="tmpl-ex-02"><code class="r">library(dplyr); library(readr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(
+    n = n(),
+    mean_mass = mean(body_mass_g, na.rm = TRUE),
+    sd_mass = sd(body_mass_g, na.rm = TRUE)
+  )</code></pre>
+        <div class="ex-output" data-output-for="tmpl-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="tmpl-ex-02"># A tibble: 3 × 4
+  altitude_group     n mean_mass sd_mass
+  &lt;chr&gt;          &lt;int&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+1 high              20      168.    16.3
+2 low               20      180.    15.9
+3 mid               20      179.    16.5</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：载入数据整形与读入的包；两个包同一行载入是为了让脚本自包含。</li>
+            <li><b>第 2–3 行</b>：每个示例都可独立运行，因此这里重新读入数据。</li>
+            <li><b>第 4 行</b>：把表送入管道。</li>
+            <li><b>第 5 行</b>：定义三个组；<code>group_by()</code> 不改变行数。</li>
+            <li><b>第 6–10 行</b>：每组返回一行；<code>na.rm = TRUE</code> 让含缺失的列仍能计算。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <pre><code class="r">aggregate(body_mass_g ~ altitude_group, data = pika,
+          FUN = function(x) c(mean = mean(x), sd = sd(x)))</code></pre>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>省略 <code>na.rm = TRUE</code> 时，只要组内有缺失，均值就是 <code>NA</code>；<code>n()</code> 统计的是行数（含缺失），报告 n 时应写清口径。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 2, "vars": { "pika": "60 × 11" }, "out": "", "note": "重新读入：示例自包含", "pipeline": { "rows": 60, "cols": 11 } },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "", "note": "进入管道", "pipeline": { "rows": 60, "cols": 11 } },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "", "note": "分组：行数不变", "pipeline": { "rows": 60, "cols": 11 } },
+          { "line": 10, "vars": { "pika": "3 × 4" }, "out": "# A tibble: 3 × 4", "note": "每组压缩为一行", "pipeline": { "rows": 3, "cols": 4 } }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="pipeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "每一步之后表还剩多少行？",
+          "frames": [
+            { "stages": [
+              { "label": "读入原始表", "rows": 60, "cols": 11 },
+              { "label": "排除缺失", "rows": 58, "cols": 11 },
+              { "label": "按海拔分组", "rows": 60, "cols": 11 },
+              { "label": "汇总", "rows": 3, "cols": 4 }
+            ], "active": 0, "note": "原始表：一行一个个体" },
+            { "stages": [
+              { "label": "读入原始表", "rows": 60, "cols": 11 },
+              { "label": "排除缺失", "rows": 58, "cols": 11 },
+              { "label": "按海拔分组", "rows": 60, "cols": 11 },
+              { "label": "汇总", "rows": 3, "cols": 4 }
+            ], "active": 1, "note": "2 个缺失血红蛋白被排除，规则写入 exclusions.csv" },
+            { "stages": [
+              { "label": "读入原始表", "rows": 60, "cols": 11 },
+              { "label": "排除缺失", "rows": 58, "cols": 11 },
+              { "label": "按海拔分组", "rows": 60, "cols": 11 },
+              { "label": "汇总", "rows": 3, "cols": 4 }
+            ], "active": 2, "note": "group_by() 不改变行数，只是标记组" },
+            { "stages": [
+              { "label": "读入原始表", "rows": 60, "cols": 11 },
+              { "label": "排除缺失", "rows": 58, "cols": 11 },
+              { "label": "按海拔分组", "rows": 60, "cols": 11 },
+              { "label": "汇总", "rows": 3, "cols": 4 }
+            ], "active": 3, "note": "summarise() 把每组压成一行：3 组 → 3 行" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. 图形舞台</h2>
+      <p>统计图由 R 预渲染；图内文字英文，图注中文并写明 n 与误差线定义。</p>
+
+      <figure class="plot-stage" data-figure="ch08-mass-by-altitude">
+        <div class="plot-stage-head">
+          <span>图 0.1 · 不同海拔的体重分布（示例图）</span>
+          <a href="../assets/figures/chapters/ch08-mass-by-altitude.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch08-mass-by-altitude.svg"
+               alt="箱线图显示高海拔组体重中位数低于低海拔组，各组叠加个体点，组间重叠明显。"
+               width="712" height="560">
+        </div>
+        <figcaption>图 0.1 · 三个海拔组的体重分布；n = 20/20/20；箱体为 IQR，须线为 1.5×IQR。数据：pika_physiology.csv（教学模拟）。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">ggplot(pika, aes(altitude_group, body_mass_g)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  geom_jitter(width = .12, alpha = .45)</code></pre>
+        </details>
+      </figure>
+
+      <h2>3. 数据预览</h2>
+      <div class="data-preview" data-dataset="pika-physiology" data-rows="6"></div>
+
+      <div class="compare">
+        <div class="compare-col bad">
+          <h4>常见写法：手写「预期输出」</h4>
+          <pre><code class="r"># 网页里手写 # A tibble: 3 × 2
+# 数值凭记忆，与真实运行不一致</code></pre>
+        </div>
+        <div class="compare-col good">
+          <h4>推荐写法：脚本生成输出</h4>
+          <pre><code class="r"># tools/examples/chNN-ex-NN.R
+# render-examples.R 捕获真实 stdout
+# check-examples.R 与 HTML 逐字比对</code></pre>
+        </div>
+      </div>
+
+      <!-- ======== 5. 科研任务 ======== -->
+      <section class="research-task" id="task">
+        <h2>科研任务：生成 Table 1</h2>
+        <p>把方法用到自己的数据上。完成后你将得到本章交付物。</p>
+        <ol class="task-steps">
+          <li><b>定规则</b>：写下缺失与离群值的排除规则，存入 <code>exclusions.csv</code>。</li>
+          <li><b>做汇总</b>：按海拔 × 性别计算 n、均值、SD。</li>
+          <li><b>查结果</b>：确认每组 n 与设计一致（每格 10 只）。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>每组 n 之和 = 清洗后总行数。</li>
+            <li>均值计算没有混入 NA。</li>
+            <li>导出的 CSV 列名可读、单位写明。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ======== 6. 常见错误 ======== -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in mean(body_mass_g) : object 'body_mass_g' not found</p>
+        <p><b>病因</b>：列名不是独立对象；<code>body_mass_g</code> 是 <code>pika</code> 的列。</p>
+        <p><b>修复</b>：<code>mean(pika$body_mass_g, na.rm = TRUE)</code>，或在 dplyr 动词内直接引用。</p>
+        <p><b>预防</b>：先 <code>glimpse(pika)</code>，用 RStudio 自动补全。</p>
+      </div>
+
+      <!-- ======== 7. 科研判断 ======== -->
+      <div class="stats">
+        <p>排除规则必须在看到检验结果之前定死；Table 1 要写清 n、均值±SD 还是中位数(IQR)，以及缺失处理方式。</p>
+      </div>
+
+      <!-- ======== 8. 方法学一句话 ======== -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Group means and standard deviations were calculated for each altitude group (n = 20 per group).</p>
+        <p class="small muted">中文：按海拔分组计算均值与标准差，每组 n = 20。</p>
+      </blockquote>
+
+      <!-- ======== 9. 小结 ======== -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>一章 = 一个科研问题 + 一组代码卡 + 一个交付物。输出由脚本生成，统计结论先写设计与 n。</p>
+      </div>
+
+      <!-- ======== 10. 自测 ======== -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch00">
+        <li><label><input type="checkbox"><span>我能列出章节的 13 个必需块</span></label></li>
+        <li><label><input type="checkbox"><span>我知道每个 Listing 需要 <code>data-example</code> 与对应 .R</span></label></li>
+        <li><label><input type="checkbox"><span>我会用统计正确性清单检查草稿</span></label></li>
+      </ul>
+
+      <!-- ======== 11. 测验 ======== -->
+      <section class="quiz" id="quiz" data-source="ch00">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：章节模板",
+          "questions": [
+            { "type": "mcq", "q": "代码卡的输出应该来自哪里？",
+              "options": ["作者手写", "tools/examples 脚本真实运行", "凭印象编写", "另一章复制"], "answer": 1,
+              "explain": "硬规则一：不发明输出。所有 R console 文本、统计量、图形必须由脚本生成并可复跑。", "skill": "repro", "difficulty": 1 },
+            { "type": "tf", "q": "排除规则可以在看到检验结果之后再定，只要写进报告就行。",
+              "answer": false,
+              "explain": "排除规则先于 p 值：先看结果再改规则属于 p-hacking 的一种。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "网页中的图由 R 预渲染为 ____ 格式（矢量），并存放在 assets/figures/。",
+              "answer": ["svg"], "explain": "SVG 为默认矢量格式；复杂图可用 PNG 2x 回退。", "skill": "viz", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- ======== 12. 研究日志 ======== -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到你的 pika-hypoxia 项目；不要手动改 CSV。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>table1_group.csv</code></td><td>按海拔×性别的 n、mean、SD</td><td>ch09 图注；ch12 方差分析</td></tr>
+            <tr><td><code>exclusions.csv</code></td><td>排除规则与被排除个体</td><td>ch10 离群值讨论</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ======== 13. 延伸 ======== -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html">速查表：dplyr 动词</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+          <a class="btn" href="../stats-nav.html">统计导航</a>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 右栏：chapter.js 注入内容 -->
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

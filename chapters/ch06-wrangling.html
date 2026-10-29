@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 6 章 数据整形：用 dplyr 把实验表变成答案 | bioR</title>
+<meta name="description" content="用 dplyr 动词写排除规则、派生 case_when 条件变量、group_by+summarise 分组汇总，端到端生成 Table 1 与排除日志；含 n() vs sum(!is.na())、base R aggregate 对照。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch06" data-part="II">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 6 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 06 · DATA SHAPING</span><span>STAGE II · EXPLORE</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">06</div>
+          <div class="cover-copy">
+            <h1>数据整形：用 dplyr 把实验表变成答案</h1>
+            <p class="cover-lede">五个动词、一条管道：从 60 行原始表，走到 6 行按海拔×性别汇总的 Table 1。</p>
+            <p class="cover-question"><b>本章科研问题：</b>哪个海拔组、哪种性别的血红蛋白更高？高海拔的差异有多大？</p>
+            <div class="cover-meta">
+              <span>90–120 MIN</span><span>前置 ch05</span><span>数据 pika_physiology.csv</span><span>交付 table1_group.csv · exclusions.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>filter()</code>/<code>select()</code> 写出<b>排除规则</b>并生成排除日志。</li>
+          <li>用 <code>mutate()</code> + <code>case_when()</code> 派生条件变量，避开顺序陷阱。</li>
+          <li>用 <code>group_by()</code> + <code>summarise()</code> 一次算出 n、均值、SD、中位数、IQR。</li>
+          <li>分清 <code>n()</code>（数行）与 <code>sum(!is.na())</code>（数有效值）。</li>
+          <li>端到端生成 <code>table1_group.csv</code>，并知道 base R 的 <code>aggregate()</code> 对照。</li>
+          <li>说清排除规则为什么必须在看 p 值之前定下。</li>
+        </ul>
+        <p class="small muted">前置：第 5 章；数据：<code>pika_physiology.csv</code>；交付：<code>table1_group.csv</code>、<code>exclusions.csv</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>血红蛋白随海拔升高而升高——这是本课题的核心假设。回答它不需要任何花哨统计：先<b>排除</b>不合格的行（规则先于结果），再按海拔×性别<b>分组汇总</b>。dplyr 把这两件事压缩成一条可读的管道；这一章同时立下一条科研纪律：<b>排除规则一旦写下，就不许再改</b>。</p>
+      </div>
+
+      <h2>1. 排除规则：在看任何统计之前</h2>
+      <p>排除规则要满足三条：<b>写在数据字典里</b>（标准客观）、<b>记进日志</b>（谁被排、为什么）、<b>先于结果</b>（不能看了一眼 p 值再把某组删掉）。本章规则：血红蛋白缺失（溶血）或体重超出 110–240 g。</p>
+
+      <article class="example-card" id="ch06-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：filter 排除 + 保留被排除的行</h3>
+          <div class="ex-meta"><span class="tag">filter · select</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch06-ex-01"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika |&gt;
+  filter(!is.na(hemoglobin_g_l), body_mass_g &gt;= 110, body_mass_g &lt;= 240) |&gt;
+  nrow()
+pika |&gt;
+  filter(is.na(hemoglobin_g_l) | body_mass_g &lt; 110 | body_mass_g &gt; 240) |&gt;
+  select(id, body_mass_g, hemoglobin_g_l)</code></pre>
+        <div class="ex-output" data-output-for="ch06-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 58
+# A tibble: 2 × 3
+  id    body_mass_g hemoglobin_g_l
+  &lt;chr&gt;       &lt;dbl&gt;          &lt;dbl&gt;
+1 P017         215.             NA
+2 P042         173.             NA</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–6 行</b>：排除后的行数 = 58。filter 里多个条件用逗号连接 = 「同时满足」（AND）。</li>
+            <li><b>第 7–10 行</b>：同一规则的<b>反面</b>——被排除的 2 行（P017、P042，血红蛋白 NA = 溶血）。体重规则没有排除任何行，这本身也是要记录的事实。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>filter(hemoglobin_g_l &gt; 100)</code>：NA 参与任何比较都是 NA，NA 行会被<b>悄悄丢弃</b>。想显式处理缺失，先写 <code>!is.na()</code>，或用 <code>is.na()</code> 单独分一支。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入 60 行原始表", "dataframe": null },
+          { "line": 6, "vars": { "pika": "60 × 11" }, "out": "[1] 58", "note": "排除后剩 58 行", "dataframe": null },
+          { "line": 10, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 2 × 3", "note": "被排除的是谁：P017、P042（溶血）", "dataframe": {
+            "columns": [ { "name": "id", "type": "chr" }, { "name": "body_mass_g", "type": "dbl" }, { "name": "hemoglobin_g_l", "type": "dbl" } ],
+            "rows": [ ["P017", "215.", "NA"], ["P042", "173.", "NA"] ], "highlight": [0, 1], "note": "排除日志的第一份草稿" } }
+        ] }</script>
+      </article>
+
+      <h2>2. mutate 与 case_when：派生条件变量</h2>
+      <p><code>case_when()</code> 按<b>从上到下</b>的顺序取第一个命中的分支——相当于 if / else if / else。顺序写错不会报错，只会悄悄把分类弄错，这是本章最阴的陷阱。</p>
+
+      <article class="example-card" id="ch06-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：体重分级与顺序陷阱</h3>
+          <div class="ex-meta"><span class="tag">mutate · case_when</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch06-ex-02"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika &lt;- pika |&gt;
+  mutate(mass_class = case_when(
+    body_mass_g &lt; 150 ~ "light",
+    body_mass_g &lt; 200 ~ "normal",
+    body_mass_g &lt;= 240 ~ "heavy"
+  ))
+count(pika, mass_class)
+# 顺序错了：宽条件放前面，heavy 把 normal 也吞掉
+pika |&gt;
+  mutate(mass_bad = case_when(
+    body_mass_g &lt;= 240 ~ "heavy",
+    body_mass_g &lt; 200 ~ "normal"
+  )) |&gt;
+  count(mass_bad)</code></pre>
+        <div class="ex-output" data-output-for="ch06-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 2
+  mass_class     n
+  &lt;chr&gt;      &lt;int&gt;
+1 heavy          2
+2 light          3
+3 normal        55
+# A tibble: 1 × 2
+  mass_bad     n
+  &lt;chr&gt;    &lt;int&gt;
+1 heavy       60</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 5–8 行</b>：从窄到宽的区间按升序排列——每支条件只对「前面都没接住」的行生效，235 g 的个体走到第三支才被接住。</li>
+            <li><b>第 9 行</b>：light 3 / normal 55 / heavy 2（P023 = 232、P011 = 205 两只大个体进 heavy）。</li>
+            <li><b>第 11–17 行</b>：把宽条件 <code>&lt;= 240</code> 放前面后，几乎所有人都被吞进 heavy（60 只）——<code>case_when()</code> 不报错，你得靠 <code>count()</code> 才能发现。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>分支条件有漏洞（比如 <code>&gt; 240</code> 没人接）→ 结果变 NA，而且是<b>静默</b>的。收尾加一行 <code>TRUE ~ NA</code> 把漏洞显式化，再决定要不要排除。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "60 × 11", "mass_class": "chr" }, "out": "", "note": "case_when 从上到下取第一支", "dataframe": null },
+          { "line": 9, "vars": { "pika": "60 × 11" }, "out": "heavy 2 · light 3 · normal 55", "note": "分级结果", "dataframe": {
+            "columns": [ { "name": "mass_class", "type": "chr" }, { "name": "n", "type": "int" } ],
+            "rows": [ ["heavy", "2"], ["light", "3"], ["normal", "55"] ], "highlight": [0], "note": "232 g 与 205 g 两只进 heavy" } },
+          { "line": 17, "vars": { "pika": "60 × 11" }, "out": "heavy 60", "note": "顺序错误：宽条件吞掉所有行", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. group_by + summarise：分组汇总</h2>
+      <p>统计的核心动作：<code>group_by()</code> 划组，<code>summarise()</code> 把每组压成一行。这一对组合生成 Table 1 的全部数字——n、均值±SD、中位数(IQR)。</p>
+
+      <article class="example-card" id="ch06-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：按海拔组汇总血红蛋白</h3>
+          <div class="ex-meta"><span class="tag">group_by · summarise</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch06-ex-03"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(
+    n = n(),
+    n_valid = sum(!is.na(hemoglobin_g_l)),
+    hb_mean = round(mean(hemoglobin_g_l, na.rm = TRUE), 1),
+    hb_sd = round(sd(hemoglobin_g_l, na.rm = TRUE), 1),
+    .groups = "drop"
+  )</code></pre>
+        <div class="ex-output" data-output-for="ch06-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 5
+  altitude_group     n n_valid hb_mean hb_sd
+  &lt;chr&gt;          &lt;int&gt;   &lt;int&gt;   &lt;dbl&gt; &lt;dbl&gt;
+1 high              20      19    178.  13.7
+2 low               20      19    149    8  
+3 mid               20      20    165.   9.3</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6 行</b>：<code>n()</code> 数每组的<b>行数</b>；<b>第 7 行</b> <code>sum(!is.na())</code> 数有效值——未排除缺失时两者不等（下一节展开）。</li>
+            <li><b>第 8–9 行</b>：<code>na.rm = TRUE</code> 剔除 NA 再算；两个函数都写了 na.rm——少了它，任何含 NA 的组结果是 NA。</li>
+            <li><b>第 10 行</b>：<code>.groups = "drop"</code> 显式取消分组——不留「隐式分组」状态给下一段代码。</li>
+            <li><b>结果</b>：high 178.5 vs low 149.0 g/L——近 30 g/L 的海拔差，核心假设的方向得到支持。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>省略 <code>.groups</code>：summarise 默认按<b>倒数第一个</b>分组变量保留分组。后续 <code>mutate()</code> 会在组内悄悄执行，结果看似正常实则错。养成习惯：汇总完立刻 <code>.groups = "drop"</code> 或 <code>ungroup()</code>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 5, "vars": { "pika": "grouped ×3" }, "out": "", "note": "按海拔划 3 组", "dataframe": null },
+          { "line": 12, "vars": { "pika": "grouped ×3" }, "out": "# A tibble: 3 × 5", "note": "每组压成一行；.groups=drop 取消分组", "dataframe": {
+            "columns": [ { "name": "altitude_group", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "hb_mean", "type": "dbl" }, { "name": "hb_sd", "type": "dbl" } ],
+            "rows": [ ["high", "20", "178.", "13.7"], ["low", "20", "149", "8"], ["mid", "20", "165.", "9.3"] ], "highlight": [0], "note": "海拔差近 30 g/L" } }
+        ] }</script>
+      </article>
+
+      <h2>4. n() 与 sum(!is.na())：两种计数</h2>
+      <p><code>n()</code> 数行——数据里的每个位置都算，包括 NA；<code>sum(!is.na())</code> 数<b>有效观测</b>。论文 Table 1 里的 n 必须是后者。什么时候两者相等？排除缺失之后。</p>
+
+      <article class="example-card" id="ch06-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：排除前后的两种 n</h3>
+          <div class="ex-meta"><span class="tag">n() vs sum(!is.na())</span><span class="tag orange">统计判断</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch06-ex-04"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+# 未排除缺失：n() 把 NA 也数进去
+pika |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(n_all = n(), n_valid = sum(!is.na(hemoglobin_g_l)))
+# 排除缺失之后两者相等
+pika |&gt;
+  filter(!is.na(hemoglobin_g_l)) |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(n_all = n(), n_valid = sum(!is.na(hemoglobin_g_l)))</code></pre>
+        <div class="ex-output" data-output-for="ch06-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 3
+  altitude_group n_all n_valid
+  &lt;chr&gt;          &lt;int&gt;   &lt;int&gt;
+1 high              20      19
+2 low               20      19
+3 mid               20      20
+# A tibble: 3 × 3
+  altitude_group n_all n_valid
+  &lt;chr&gt;          &lt;int&gt;   &lt;int&gt;
+1 high              19      19
+# ... (2 more lines; full output: expected/ch06-ex-04.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第一张表</b>：high 与 low 各 n_all = 20 但 n_valid = 19——每个海拔组各有 1 个溶血 NA。报告 n 时写错列，高海拔的统计功效就虚报一格。</li>
+            <li><b>第二张表</b>：排除后 n_all == n_valid——这是「有效 n 与行数一致」的对账检查，应该写进脚本。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 6, "vars": { "pika": "grouped ×3" }, "out": "n_all 20 · n_valid 19", "note": "NA 被计入 n_all", "dataframe": {
+            "columns": [ { "name": "altitude_group", "type": "chr" }, { "name": "n_all", "type": "int" }, { "name": "n_valid", "type": "int" } ],
+            "rows": [ ["high", "20", "19"], ["low", "20", "19"], ["mid", "20", "20"] ], "highlight": [0, 1], "note": "两种 n 的差 = 缺失数" } },
+          { "line": 11, "vars": { "pika": "grouped ×3" }, "out": "n_all == n_valid", "note": "排除后两种 n 相等（对账通过）", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>5. 端到端 Table 1：排除日志 + 分组汇总</h2>
+      <p>把前面的零件装成一条完整管线：排除 → 记日志 → 分组 → 汇总 → 导出 CSV。这就是 <code>06_table1.R</code> 的骨架，也是你以后每个数据集第一天该写的脚本。</p>
+
+      <article class="example-card" id="ch06-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：Table 1（海拔 × 性别）与排除日志</h3>
+          <div class="ex-meta"><span class="tag">端到端</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch06-ex-05"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+dir.create(here::here("data"), showWarnings = FALSE)  # 交付物目录（第 1 章的项目结构）
+excluded &lt;- pika |&gt;
+  filter(is.na(hemoglobin_g_l) | body_mass_g &lt; 110 | body_mass_g &gt; 240) |&gt;
+  transmute(id, rule = case_when(
+    is.na(hemoglobin_g_l) ~ "hemoglobin missing",
+    TRUE ~ "mass out of range"))
+write_csv(excluded, here::here("data/exclusions.csv"))
+analysis &lt;- pika |&gt;
+  filter(!is.na(hemoglobin_g_l), body_mass_g &gt;= 110, body_mass_g &lt;= 240)
+table1 &lt;- analysis |&gt;
+  group_by(altitude_group, sex) |&gt;
+  summarise(
+    n = n(),
+    mass_mean_sd = sprintf("%.1f ± %.1f", mean(body_mass_g), sd(body_mass_g)),
+    mass_median_iqr = sprintf("%.1f (%.1f–%.1f)",
+      median(body_mass_g), quantile(body_mass_g, .25), quantile(body_mass_g, .75)),
+    hb_mean_sd = sprintf("%.1f ± %.1f",
+      mean(hemoglobin_g_l), sd(hemoglobin_g_l)),
+    .groups = "drop"
+  )
+write_csv(table1, here::here("data/table1_group.csv"))
+table1
+# base R 对照：aggregate() 一次算两列
+aggregate(cbind(body_mass_g, hemoglobin_g_l) ~ altitude_group + sex,
+          data = analysis, function(x) round(c(mean = mean(x), sd = sd(x)), 1))</code></pre>
+        <div class="ex-output" data-output-for="ch06-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 6 × 6
+  altitude_group sex       n mass_mean_sd mass_median_iqr     hb_mean_sd  
+  &lt;chr&gt;          &lt;chr&gt; &lt;int&gt; &lt;chr&gt;        &lt;chr&gt;               &lt;chr&gt;       
+1 high           F         9 157.7 ± 19.0 160.9 (150.2–168.3) 176.1 ± 15.7
+2 high           M        10 176.0 ± 7.8  173.9 (170.7–178.6) 180.6 ± 12.0
+3 low            F        10 173.8 ± 13.7 171.9 (162.9–185.2) 147.8 ± 9.0 
+4 low            M         9 182.5 ± 13.2 187.4 (181.2–191.1) 150.3 ± 7.0 
+5 mid            F        10 180.1 ± 23.3 176.5 (171.4–188.3) 162.1 ± 7.0 
+6 mid            M        10 177.3 ± 5.3  179.0 (173.8–181.6) 168.7 ± 10.4
+  altitude_group sex body_mass_g.mean body_mass_g.sd hemoglobin_g_l.mean
+# ... (13 more lines; full output: expected/ch06-ex-05.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 5–9 行</b>：排除日志——被排除的行 + <code>case_when</code> 标注原因，<code>write_csv</code> 存为 <code>exclusions.csv</code>。</li>
+            <li><b>第 13–23 行</b>：按海拔 × 性别（6 组）汇总；<code>sprintf()</code> 把数字排成「均值 ± SD」「中位数 (Q1–Q3)」的期刊格式。</li>
+            <li><b>第 24 行</b>：<code>write_csv()</code> 把 Table 1 落盘为 <code>table1_group.csv</code>——与排除日志同目录，两份交付物齐了。</li>
+            <li><b>第 26–28 行</b>：base R 对照——<code>aggregate()</code> 公式接口一次算两列的均值与 SD，验证 dplyr 结果。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>summarise(mean = body_mass_g)</code> 想返回整列——报错 <code>must return a single value</code>。summarise 的每个参数必须把一组压成<b>一个</b>值；要保留整列用 <code>mutate()</code>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入原始表", "dataframe": null },
+          { "line": 9, "vars": { "excluded": "2 × 2" }, "out": "", "note": "排除日志写入 data/exclusions.csv", "dataframe": null },
+          { "line": 25, "vars": { "table1": "6 × 6" }, "out": "# A tibble: 6 × 6", "note": "6 组：海拔 × 性别", "dataframe": {
+            "columns": [ { "name": "altitude_group", "type": "chr" }, { "name": "sex", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "hb_mean_sd", "type": "chr" } ],
+            "rows": [ ["high", "F", "9", "176.1 ± 15.7"], ["high", "M", "10", "180.6 ± 12.0"], ["low", "F", "10", "147.8 ± 9.0"], ["low", "M", "9", "150.3 ± 7.0"] ], "highlight": [0, 2], "note": "高海拔 F/M 均比低海拔高约 30 g/L" } }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="pipeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "从原始表到 Table 1，表经历了什么？",
+          "frames": [
+            { "stages": [
+              { "label": "原始表", "rows": 60, "cols": 11 },
+              { "label": "filter 排除", "rows": 58, "cols": 11 },
+              { "label": "group_by 6 组", "rows": 58, "cols": 11 },
+              { "label": "summarise", "rows": 6, "cols": 6 }
+            ], "active": 0, "note": "原始表：60 行，一行一个个体（含 2 个溶血 NA）。" },
+            { "stages": [
+              { "label": "原始表", "rows": 60, "cols": 11 },
+              { "label": "filter 排除", "rows": 58, "cols": 11 },
+              { "label": "group_by 6 组", "rows": 58, "cols": 11 },
+              { "label": "summarise", "rows": 6, "cols": 6 }
+            ], "active": 1, "note": "排除规则删掉 2 行（血红蛋白缺失）；体重规则排除 0 行但记录在案。" },
+            { "stages": [
+              { "label": "原始表", "rows": 60, "cols": 11 },
+              { "label": "filter 排除", "rows": 58, "cols": 11 },
+              { "label": "group_by 6 组", "rows": 58, "cols": 11 },
+              { "label": "summarise", "rows": 6, "cols": 6 }
+            ], "active": 2, "note": "按海拔 × 性别划分：3 × 2 = 6 组（组只是标签，行数不变）。" },
+            { "stages": [
+              { "label": "原始表", "rows": 60, "cols": 11 },
+              { "label": "filter 排除", "rows": 58, "cols": 11 },
+              { "label": "group_by 6 组", "rows": 58, "cols": 11 },
+              { "label": "summarise", "rows": 6, "cols": 6 }
+            ], "active": 3, "note": "summarise 把每组压成一行：6 组 → 6 行 × 6 列的 Table 1。" }
+          ]
+        }</script>
+      </div>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：table1_group.csv 与 exclusions.csv</h2>
+        <p>把本章操作串成 <code>R/06_table1.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>排除</b>：写明规则（血红蛋白缺失、体重出界）；生成 <code>data/exclusions.csv</code>（id + rule 两列）。</li>
+          <li><b>汇总</b>：按海拔 × 性别生成 6 组 Table 1（n、体重 mean±SD、体重 median(IQR)、血红蛋白 mean±SD），导出 <code>data/table1_group.csv</code>。</li>
+          <li><b>对账</b>：sum(n_valid) = nrow(analysis) = 58；exclusions 行数 = 60 − 58 = 2。</li>
+          <li><b>对照</b>：用 <code>aggregate()</code> 复算体重均值/SD，与 Table 1 数字一致。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>把排除规则注释写在 <code>06_table1.R</code> 头部——先于任何统计代码。</li>
+            <li>Table 1 的 n 列使用有效 n；哪一组是 9？为什么？</li>
+            <li>重跑脚本两次，两份 CSV 逐字节一致。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in `summarise()`: ℹ In argument: `hb_mean = mean(...)`. Caused by error: `hb_mean` must return a single value, not 20.</p>
+        <p><b>病因</b>：summarise 里忘了包 <code>mean()</code>/<code>n()</code>，返回了整列向量。</p>
+        <p><b>修复</b>：每个参数都得把一组压成一个值——mean、median、quantile、n()…</p>
+        <p><b>预防</b>：报错信息里的「not 20」= 组大小；summarise 保留整列请改用 mutate。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in `filter()`: ℹ In argument: `body_mass &gt;= 110`. Caused by error: object 'body_mass' not found.</p>
+        <p><b>病因</b>：列名拼错（少了 <code>_g</code>）。dplyr 动词里直接写列名，不写 <code>pika$</code>。</p>
+        <p><b>修复</b>：<code>names(pika)</code> 核对；RStudio 里 <code>Ctrl+Space</code> 补全。</p>
+        <p><b>预防</b>：全站统一 snake_case（第 4 章导入时就重命名好）。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in `group_by()`: Must group by variables found in `.data`. Column `Altitude_group` not found.</p>
+        <p><b>病因</b>：大小写写错。R 列名区分大小写，<code>altitude_group</code> ≠ <code>Altitude_group</code>。</p>
+        <p><b>修复</b>：改回全小写；或导入时 <code>rename()</code> 统一命名。</p>
+        <p><b>预防</b>：报错里会列出最接近的候选名，先读报错再动手。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>排除规则必须在看 p 值之前定下</b>——否则它就是一台「把结果磨好看」的机器。Table 1 要写清每个变量用的是均值±SD（近似正态）还是中位数(IQR)（偏态或有离群值），并把选择依据写进表注。本章的排除日志是这两个纪律的物理载体。</p>
+      </div>
+      <div class="repro">
+        <p><code>table1_group.csv</code> 与 <code>exclusions.csv</code> 都由 <code>06_table1.R</code> 从原始数据再生成——修改任何一步都发生在脚本里，重跑即生效。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Individuals with missing hemoglobin (hemolysis, n = 2) or body mass outside the pre-specified range 110–240 g were excluded before any inferential test; group-wise summaries are reported as mean ± SD with median (IQR) for body mass, by altitude group and sex (Table 1).</p>
+        <p class="small muted">中文：血红蛋白缺失（溶血，n = 2）或体重超出预定范围 110–240 g 的个体在任何推断检验前被排除；按海拔组与性别汇总，体重同时报告均值±SD 与中位数(IQR)（表 1）。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>排除规则先于结果并留日志；case_when 从上到下取分支、顺序即语义；group_by+summarise 一组一行，n() 数行、sum(!is.na()) 数有效观测；.groups="drop" 不留隐式分组。端到端产出 table1_group.csv 与 exclusions.csv。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch06">
+        <li><label><input type="checkbox"><span>我能写出排除规则并生成排除日志</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释 case_when 的顺序陷阱并举一个错例</span></label></li>
+        <li><label><input type="checkbox"><span>我能一次算出 n、mean±SD、median(IQR) 并解释 .groups = "drop"</span></label></li>
+        <li><label><input type="checkbox"><span>我能分清 n() 与 sum(!is.na()) 并说出 Table 1 该用哪个</span></label></li>
+        <li><label><input type="checkbox"><span>我知道排除规则为什么必须在看 p 值之前定下</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 aggregate() 对照验证 dplyr 的结果</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch06">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：dplyr 数据整形",
+          "questions": [
+            { "type": "mcq", "q": "60 行 → filter 后 58 行。filter() 在这条管道里负责？",
+              "options": ["选列", "选行（保留满足条件的行）", "新建列", "汇总"], "answer": 1,
+              "explain": "filter 按行条件筛选；select 才是选列。mutate 新建列，summarise 压缩成一行。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "case_when(x < 200 ~ \"A\", x <= 240 ~ \"B\") 中 x = 235 会得到？",
+              "options": ["\"B\"", "\"A\"", "NA", "报错"], "answer": 1,
+              "explain": "case_when 从上到下取第一个命中的分支：235 < 200 为假，但 235 <= 240 为真 → \"A\"。顺序即语义。", "skill": "syntax", "difficulty": 2 },
+            { "type": "tf", "q": "summarise 里 n() 会把 NA 也数进组内。",
+              "answer": true,
+              "explain": "n() 数行数（包括含 NA 的行）；有效观测数是 sum(!is.na(x))。Table 1 用后者。", "skill": "stats", "difficulty": 1 },
+            { "type": "fill", "q": "取消 summarise 之后的隐式分组：summarise(..., .groups = \"____\")。",
+              "answer": ["drop"], "explain": ".groups = \"drop\" 显式取消全部分组；省略时默认保留倒数第一个分组变量。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "summarise(mean_col = df$body_mass_g) 会怎样？",
+              "options": ["返回该列均值", "报错 must return a single value", "静默返回首行", "返回整列"], "answer": 1,
+              "explain": "summarise 的每个参数必须压成一个值；裸列名是 20 个值的向量 → 报错。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "体重明显右偏、有 2 个大个体。Table 1 里体重一栏最该报？",
+              "options": ["只报均值±SD", "只报中位数(IQR)", "两者都报并说明选择依据", "报最大最小值"], "answer": 2,
+              "explain": "偏态/有离群值时 median(IQR) 更稳健；同时报均值±SD 便于与文献对比，并在表注写明依据。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：计算每组有效血红蛋白观测数。",
+              "code": "summarise(n_valid = sum(!____(hemoglobin_g_l)))",
+              "blanks": [ { "answer": ["is.na"] } ],
+              "explain": "!is.na(x) 是逻辑向量，sum() 把 TRUE 记 1 → 有效观测数。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "看完 ANOVA 的 p 值后，再把 p 不显著的组排除掉——这是可以接受的探索性分析。",
+              "answer": false,
+              "explain": "排除规则必须先于结果。事后按结果挑组是数据 dredging，第 16 章的多重比较会再回到这条红线。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；两份文件必须能由脚本重跑再生成。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>table1_group.csv</code></td><td>6 组（海拔 × 性别）n / mean±SD / median(IQR)</td><td>ch07 宽长转换、ch08 可视化素材</td></tr>
+            <tr><td><code>exclusions.csv</code></td><td>被排除个体 + 排除原因</td><td>论文排除流程图的原始依据</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：Table 1 是宽表；RNA-seq counts 是长表。第 7 章 pivot_longer/wider 与 join 让两种形状自由互换。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#dplyr-verbs">速查：dplyr 动词</a>
+          <a class="btn" href="../cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

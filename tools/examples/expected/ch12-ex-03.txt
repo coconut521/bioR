@@ -1,0 +1,2 @@
+ levene kruskal 
+  0.786   0.030 

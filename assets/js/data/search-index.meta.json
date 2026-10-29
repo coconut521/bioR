@@ -1,0 +1,50 @@
+{
+  "generated": "2026-10-28T22:46:24.938Z",
+  "records": 200,
+  "sources": [
+    {
+      "file": "bioinfo-data.js",
+      "hash": "751bc861d51ec90b"
+    },
+    {
+      "file": "chapter-config.js",
+      "hash": "91cf103e367e4c1e"
+    },
+    {
+      "file": "cheatsheets-data.js",
+      "hash": "3930f133f1cb73e1"
+    },
+    {
+      "file": "clinic-data.js",
+      "hash": "97574f94f6196ce7"
+    },
+    {
+      "file": "course-toc.js",
+      "hash": "e989b340dae70290"
+    },
+    {
+      "file": "dataset-previews.js",
+      "hash": "3abc7420781ae882"
+    },
+    {
+      "file": "datasets-data.js",
+      "hash": "3a506f1ead56d2ae"
+    },
+    {
+      "file": "deliverables-data.js",
+      "hash": "dddd935ccca264f6"
+    },
+    {
+      "file": "glossary-data.js",
+      "hash": "c9c4a10ad2d2ac93"
+    },
+    {
+      "file": "triage-data.js",
+      "hash": "dc1d46cc0dbbe5d3"
+    },
+    {
+      "file": "updates-data.js",
+      "hash": "28dac2aac64a0c57"
+    }
+  ]
+}

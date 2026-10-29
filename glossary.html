@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>术语表：R、统计与生物概念 | bioR</title>
+<meta name="description" content="22 个核心术语：中文名、英文名、一句话定义、公式、R 函数与相关章节；支持分类、搜索与英文首字母索引。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="glossary">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 术语表</p>
+
+  <header class="special-hero">
+    <span class="kicker">GLOSSARY · 22 TERMS</span>
+    <h1>术语表</h1>
+    <p class="lede">同一个词，在 R、统计与生物学里含义不同。这里给出一句话定义、必要的公式、对应 R 函数与相关章节。</p>
+    <div class="cover-meta"><span>22 个术语</span><span>3 类</span><span>公式 + R 函数</span><span>章节直达</span></div>
+  </header>
+
+  <div class="filter-bar" role="search" aria-label="搜索术语">
+    <div class="filter-chips" id="gl-cats">
+      <button type="button" class="filter-chip active" data-cat="">全部</button>
+      <button type="button" class="filter-chip" data-cat="R">R</button>
+      <button type="button" class="filter-chip" data-cat="统计">统计</button>
+      <button type="button" class="filter-chip" data-cat="生物">生物</button>
+    </div>
+    <div class="filter-search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="gl-q" type="search" placeholder="搜索术语 / 函数" aria-label="搜索术语">
+    </div>
+    <div class="filter-actions"><button type="button" class="btn" id="gl-reset">重置</button></div>
+  </div>
+
+  <div class="gl-index" id="gl-index" aria-label="按英文首字母筛选"></div>
+
+  <p class="small muted" id="gl-count">22 个术语</p>
+  <div class="term-grid" id="term-grid"></div>
+  <div class="empty-state" id="gl-empty" hidden><p>没有匹配的术语——换关键词，或点「重置」。</p></div>
+
+  <section>
+    <h2>怎么用</h2>
+    <div class="unit-grid">
+      <article class="unit-card"><h3>正文里的虚线词</h3><p class="uc-body">章节正文中带下划线的术语可悬停看定义；点击跳回本页对应条目。</p></article>
+      <article class="unit-card"><h3>先查定义，再查函数</h3><p class="uc-body">定义决定你怎么解释结果；R 函数只是实现方式，不能替代概念。</p></article>
+      <article class="unit-card"><h3>术语不孤立</h3><p class="uc-body">每个条目都链到章节：在科研情境里读一遍，比背定义有效。</p></article>
+    </div>
+  </section>
+
+  <noscript><p class="small muted">术语卡片由本地 JavaScript 从 <code>assets/js/data/glossary-data.js</code> 渲染；数据与脚本均为离线文件。</p></noscript>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="cheatsheets.html">速查表</a>
+      <a class="btn" href="stats-nav.html">统计导航</a>
+      <a class="btn" href="clinic.html">数据诊所</a>
+      <a class="btn" href="project.html">课题工作台</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/glossary.js"></script>
+</body>
+</html>

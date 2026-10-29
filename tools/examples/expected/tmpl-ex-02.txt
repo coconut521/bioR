@@ -1,0 +1,6 @@
+# A tibble: 3 × 4
+  altitude_group     n mean_mass sd_mass
+  <chr>          <int>     <dbl>   <dbl>
+1 high              20      168.    16.3
+2 low               20      180.    15.9
+3 mid               20      179.    16.5

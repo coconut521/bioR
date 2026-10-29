@@ -1,0 +1,3 @@
+    group  n events median_days LCL UCL
+1 control 30     21          46  35  NA
+2 hypoxia 30     27          31  22  44

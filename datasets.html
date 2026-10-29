@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据集标本馆：先看标本标签，再动手 | bioR</title>
+<meta name="description" content="9 个教学数据集的标本标签：研究问题、变量、n、缺失、适用章节与下载；数据字典查看器；8 个外部开放数据入口与许可引用规范。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="datasets">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 数据集标本馆</p>
+
+  <header class="special-hero">
+    <span class="kicker">DATASET ZOO · 9 TEACHING SETS + 8 EXTERNAL SOURCES</span>
+    <h1>数据集标本馆</h1>
+    <p class="lede">每份数据都有标本标签：研究问题、变量与单位、n 与缺失、模拟还是真实、许可、适合练哪一章。先读标签，再动手——这比打开 CSV 直接画图快得多。</p>
+    <div class="cover-meta">
+      <span>9 教学数据集</span><span>全部 simulated: true</span><span>固定种子 20261027</span><span>CC0 许可</span>
+    </div>
+  </header>
+
+  <!-- 筛选栏 -->
+  <div class="filter-bar" role="search" aria-label="筛选数据集">
+    <div class="filter-chips">
+      <button type="button" class="filter-chip active" data-tab="all">全部</button>
+      <button type="button" class="filter-chip" data-tab="teaching">教学数据</button>
+      <button type="button" class="filter-chip" data-tab="external">外部入口</button>
+    </div>
+    <select id="filter-chapter" class="filter-select" aria-label="按章节筛选">
+      <option value="">全部章节</option>
+    </select>
+    <select id="filter-analysis" class="filter-select" aria-label="按分析类型筛选">
+      <option value="">全部分析</option>
+    </select>
+    <div class="filter-search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="filter-q" type="search" placeholder="搜索数据集 / 变量 / 研究问题…" aria-label="搜索数据集">
+    </div>
+    <div class="filter-actions">
+      <button type="button" class="btn" id="filter-reset">重置</button>
+    </div>
+  </div>
+
+  <p class="small muted" id="ds-count">9 个教学数据集</p>
+
+  <h2 class="sr-only">教学模拟数据集</h2>
+
+  <div class="ds-grid" id="ds-grid">
+
+    <article class="unit-card ds-card" id="pika-physiology" data-chapters="ch03,ch06,ch08,ch10,ch11,ch12,ch13" data-analyses="描述统计|t 检验|ANOVA|回归">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">60 × 11</span><span class="tag green">核心数据集</span></div>
+      <h3>高原鼠兔生理调查（教学模拟）</h3>
+      <div class="uc-body">
+        <p>海拔与性别是否与体重、血红蛋白等生理指标相关？</p>
+        <p class="small muted">11 个变量（个体/海拔/性别/体重/体长/血红蛋白/压积/血糖/批次/日期）；血红蛋白 2 个 NA（溶血）；体重含 2 个预设极端值。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_physiology.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-physiology">数据字典</a>
+        <a class="btn" href="chapters/ch03-data-frames.html">从 ch03 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-physiology" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-repeated" data-chapters="ch11,ch15" data-analyses="配对检验|混合效应模型">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">36 × 6</span><span class="tag orange">伪重复伏笔</span></div>
+      <h3>重复测量：低氧处理 × 3 时间点（教学模拟）</h3>
+      <div class="uc-body">
+        <p>低氧处理对体重和血红蛋白的影响是否随时间变化？（个体内相关 ICC ≈ 0.5）</p>
+        <p class="small muted">12 只个体 × 3 时间点 = 36 行；n 是个体数 12，不是 36。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_repeated.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-repeated">数据字典</a>
+        <a class="btn" href="chapters/ch11-two-group.html">从 ch11 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-repeated" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-survival" data-chapters="ch13,ch16" data-analyses="Kaplan–Meier|log-rank|Cox 回归">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">60 × 6</span><span class="tag orange">含删失</span></div>
+      <h3>生存实验：低氧 vs 对照（教学模拟）</h3>
+      <div class="uc-body">
+        <p>低氧处理是否改变存活到终点的时间？（20% 删失）</p>
+        <p class="small muted">time_days + status（1 = 事件，0 = 删失）；删失不是缺失，不能删行。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_survival.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-survival">数据字典</a>
+        <a class="btn" href="chapters/ch13-regression.html">从 ch13 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-survival" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-rnaseq-counts" data-chapters="ch07,ch17,ch18" data-analyses="宽长转换|PCA|差异表达">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">2000 × 14</span><span class="tag">负二项</span></div>
+      <h3>RNA-seq counts 矩阵（教学模拟）</h3>
+      <div class="uc-body">
+        <p>低氧 vs 对照的基因表达差异是什么？批次效应有多大？</p>
+        <p class="small muted">2000 基因 × 12 样本（C1–C6 / H1–H6）；含 80 个真差异基因 + 可被 PCA 看见的批次效应。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_rnaseq_counts.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-rnaseq-counts">数据字典</a>
+        <a class="btn" href="chapters/ch17-multivariate.html">从 ch17 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-rnaseq-counts" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-rnaseq-metadata-raw" data-chapters="ch04,ch07" data-analyses="导入 QC|join 检查">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">12 × 5</span><span class="tag red">埋了 3 处错</span></div>
+      <h3>RNA-seq 样本表 · 原始版（教学模拟）</h3>
+      <div class="uc-body">
+        <p>样本表的 ID 能和 counts 列名对上吗？（故意埋入 3 处不一致）</p>
+        <p class="small muted">「H-5」「H-6」命名不一致、「 C3」带前导空格——join 时会悄悄丢样本。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_rnaseq_metadata_raw.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-rnaseq-metadata-raw">数据字典</a>
+        <a class="btn" href="chapters/ch07-reshape-joins.html">从 ch07 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-rnaseq-metadata-raw" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-rnaseq-metadata-clean" data-chapters="ch17,ch18" data-analyses="PCA|差异表达">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">12 × 5</span><span class="tag green">清洗完成</span></div>
+      <h3>RNA-seq 样本表 · 清洗版（教学模拟）</h3>
+      <div class="uc-body">
+        <p>清洗后的样本表如何与 counts 矩阵 12/12 匹配？</p>
+        <p class="small muted">ID 与 counts 列名逐一对齐；ch07 的交付物之一。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_rnaseq_metadata_clean.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-rnaseq-metadata-clean">数据字典</a>
+        <a class="btn" href="chapters/ch07-reshape-joins.html">从 ch07 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-rnaseq-metadata-clean" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-annotation" data-chapters="ch18" data-analyses="富集分析">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">2000 × 5</span><span class="tag">GO / KEGG</span></div>
+      <h3>基因注释表（教学模拟）</h3>
+      <div class="uc-body">
+        <p>差异基因落在哪些 GO/KEGG 条目上？</p>
+        <p class="small muted">gene_id / symbol / description / go_bp / kegg_pathway；GO/KEGG 条目为示意，不对应真实鼠兔基因组。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_annotation.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="pika-annotation">数据字典</a>
+        <a class="btn" href="chapters/ch18-rnaseq.html">从 ch18 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="pika-annotation" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="plate-reader-raw" data-chapters="ch04" data-analyses="导入|tidy 转换">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">96 × 4</span><span class="tag orange">前 3 行注释</span></div>
+      <h3>酶标仪原始导出（教学模拟）</h3>
+      <div class="uc-body">
+        <p>仪器导出的前导注释怎样跳过？96 孔读数如何变成 tidy 表？</p>
+        <p class="small muted">well / od600 / temperature_c / cycle；需要 skip = 3。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/plate_reader_raw.csv" download>下载 CSV</a>
+        <a class="btn" href="#dictionary" data-dict="plate-reader-raw">数据字典</a>
+        <a class="btn" href="chapters/ch04-import-qc.html">从 ch04 开始</a>
+      </div>
+      <div class="data-preview" data-dataset="plate-reader-raw" data-rows="3" data-compact="1"></div>
+    </article>
+
+    <article class="unit-card ds-card" id="pika-lab-notebook" data-chapters="ch04" data-analyses="read_excel|多 sheet 处理">
+      <div class="uc-meta"><span class="tag">模拟数据</span><span class="tag blue">2 sheets</span><span class="tag">Excel</span></div>
+      <h3>实验记录 Excel（教学模拟）</h3>
+      <div class="uc-body">
+        <p>Excel 记录里的采样日期与备注怎样并入样本表？</p>
+        <p class="small muted">samples（60 行）+ incidents（5 行异常事件，解释部分 NA 的来源）。</p>
+      </div>
+      <div class="uc-links">
+        <a class="btn" href="assets/data/pika_lab_notebook.xlsx" download>下载 XLSX</a>
+        <a class="btn" href="#dictionary" data-dict="pika-lab-notebook">数据字典</a>
+        <a class="btn" href="chapters/ch04-import-qc.html">从 ch04 开始</a>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="empty-state" id="ds-empty" hidden>
+    <p>没有匹配的数据集——放宽条件试试。</p>
+    <div class="es-actions"><button type="button" class="btn" id="empty-reset">清除筛选</button></div>
+  </div>
+
+  <!-- 外部入口 -->
+  <section id="ext-wrap" hidden>
+    <h2>外部开放数据入口</h2>
+    <p class="small muted">只给入口与检索策略，本站不镜像、不自动下载外部数据；引用与许可按各站点要求执行。</p>
+    <div class="unit-grid">
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">表达谱</span></div>
+        <h3>GEO · Gene Expression Omnibus</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：找同主题的芯片/RNA-seq 数据集与样本表。</p>
+          <p><b>许可注意</b>：数据多可自由使用，但样本级信息需遵守原文与伦理限制。</p>
+          <p><b>引用</b>：引用数据集编号（GSExxx）与原文。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.ncbi.nlm.nih.gov/geo/" target="_blank" rel="noopener">打开 GEO</a><span class="small muted">工具：GEOquery / readr</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">原始测序</span></div>
+        <h3>SRA · Sequence Read Archive</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：下载 fastq 重跑上游流程（ch17 的前一站）。</p>
+          <p><b>许可注意</b>：受控访问数据（dbGaP）不可用于公开教学。</p>
+          <p><b>引用</b>：SRP/SRR 编号 + BioProject。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.ncbi.nlm.nih.gov/sra" target="_blank" rel="noopener">打开 SRA</a><span class="small muted">工具：SRA Toolkit</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">基因组/注释</span></div>
+        <h3>Ensembl</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：取参考基因组、GTF 注释与同源基因。</p>
+          <p><b>许可注意</b>：数据开放，遵守站点引用要求。</p>
+          <p><b>引用</b>：Ensembl release 版本号 + 物种。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.ensembl.org/" target="_blank" rel="noopener">打开 Ensembl</a><span class="small muted">工具：biomaRt / AnnotationHub</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">蛋白</span></div>
+        <h3>UniProt</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：查蛋白功能、结构域与通路注释。</p>
+          <p><b>许可注意</b>：CC BY 4.0，注明版本。</p>
+          <p><b>引用</b>：UniProtKB 登录号 + release。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.uniprot.org/" target="_blank" rel="noopener">打开 UniProt</a><span class="small muted">工具：UniProt.ws</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">结构</span></div>
+        <h3>PDB · Protein Data Bank</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：取蛋白结构做结构域映射与图。</p>
+          <p><b>许可注意</b>：结构数据开放（CC0），图件署名规范见站点。</p>
+          <p><b>引用</b>：PDB ID + 原文。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.rcsb.org/" target="_blank" rel="noopener">打开 PDB</a><span class="small muted">工具：bio3d / PyMOL</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag blue">通路</span></div>
+        <h3>KEGG</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：通路图与富集分析的背景集。</p>
+          <p><b>许可注意</b>：学术使用需遵守 KEGG 的使用条款（商业用途需授权）。</p>
+          <p><b>引用</b>：KEGG release + 通路编号（ko/k map）。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.kegg.jp/" target="_blank" rel="noopener">打开 KEGG</a><span class="small muted">工具：clusterProfiler</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag green">物种分布</span></div>
+        <h3>GBIF</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：高原鼠兔等物种的分布记录与生态分析。</p>
+          <p><b>许可注意</b>：各记录许可不同（CC0/CC BY/CC BY-NC），逐条查看。</p>
+          <p><b>引用</b>：GBIF DOI + 数据集引用。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://www.gbif.org/" target="_blank" rel="noopener">打开 GBIF</a><span class="small muted">工具：rgbif</span></div>
+      </article>
+
+      <article class="unit-card ext-card">
+        <div class="uc-meta"><span class="tag green">原始数据仓库</span></div>
+        <h3>Dryad</h3>
+        <div class="uc-body">
+          <p><b>适合</b>：找论文背后的原始数据与代码包。</p>
+          <p><b>许可注意</b>：多为 CC0，仍以数据集页面为准。</p>
+          <p><b>引用</b>：Dryad DOI（数据引用与论文引用分开写）。</p>
+        </div>
+        <div class="uc-links"><a class="btn" href="https://datadryad.org/" target="_blank" rel="noopener">打开 Dryad</a><span class="small muted">工具：浏览器 + readr</span></div>
+      </article>
+    </div>
+    <p class="small muted">另有 ArrayExpress、UCSC Genome Browser、GO Consortium、Zenodo、Figshare 等入口，检索策略相同：先读许可与版本，再下载。</p>
+  </section>
+
+  <!-- 数据字典查看器 -->
+  <section id="dictionary">
+    <h2>数据字典查看器</h2>
+    <div class="dict-toolbar">
+      <label class="small" for="dict-select">选择数据集</label>
+      <select id="dict-select" class="filter-select"></select>
+      <a class="btn" href="assets/data/data-dictionary.csv" download>下载完整字典 CSV</a>
+    </div>
+    <div id="dict-output" class="dict-output" aria-live="polite"></div>
+  </section>
+
+  <!-- 来源与许可 -->
+  <section id="sources">
+    <h2>数据来源与许可</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <caption>9 个教学数据集全部为固定种子（20261027）生成的模拟数据，不包含任何真实个体或患者信息。</caption>
+        <thead><tr><th scope="col">数据集</th><th scope="col">性质</th><th scope="col">许可</th><th scope="col">生成方式</th></tr></thead>
+        <tbody>
+          <tr><td><code>pika_physiology.csv</code></td><td>模拟</td><td>CC0</td><td>rnorm/负二项等分布，含教学用缺失与极端值</td></tr>
+          <tr><td><code>pika_repeated.csv</code></td><td>模拟</td><td>CC0</td><td>个体随机效应 + 时间趋势</td></tr>
+          <tr><td><code>pika_survival.csv</code></td><td>模拟</td><td>CC0</td><td>指数生存 + 20% 删失</td></tr>
+          <tr><td><code>pika_rnaseq_counts.csv</code></td><td>模拟</td><td>CC0</td><td>负二项 counts；80 个真差异基因 + 批次效应</td></tr>
+          <tr><td><code>pika_rnaseq_metadata_*.csv</code></td><td>模拟</td><td>CC0</td><td>12 样本表；raw 版埋 3 处 ID 不一致</td></tr>
+          <tr><td><code>pika_annotation.csv</code></td><td>模拟</td><td>CC0</td><td>GO/KEGG 条目示意，不对应真实基因组</td></tr>
+          <tr><td><code>plate_reader_raw.csv</code></td><td>模拟</td><td>CC0</td><td>96 孔读数 + 3 行仪器注释</td></tr>
+          <tr><td><code>pika_lab_notebook.xlsx</code></td><td>模拟</td><td>CC0</td><td>两个 sheet：samples + incidents</td></tr>
+          <tr><td><code>data-dictionary.csv</code></td><td>模拟</td><td>CC0</td><td>全部变量的单位/缺失/范围汇总</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 引用与使用规范 -->
+  <section id="cite">
+    <h2>引用与使用规范</h2>
+    <div class="stats">
+      <p><b>教学模拟数据必须标注 <code>simulated: true</code></b>：任何用了本章数据的作业、报告、预注册，都要写明「模拟数据，固定种子 20261027，仅用于教学」。</p>
+    </div>
+    <ul>
+      <li>真实数据必须写许可与来源；本站不收录患者级数据。</li>
+      <li>外部数据不镜像、不自动抓取；下载文件名与数据字典保持一致。</li>
+      <li>数据字典是数据卡的一部分，引用时一并提供。</li>
+    </ul>
+    <blockquote class="methods-sentence">
+      <p lang="en">All teaching datasets in this course are simulated with a fixed seed (20261027) and released under CC0; they contain no real individuals and must not be presented as empirical observations.</p>
+      <p class="small muted">中文：本课程所有教学数据集均以固定种子 20261027 模拟生成，采用 CC0 许可；不含真实个体，不得作为实证观测呈现。</p>
+    </blockquote>
+  </section>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="index.html#route">回到研究路线</a>
+      <a class="btn" href="cheatsheets.html#import">速查：导入导出</a>
+      <a class="btn" href="cheatsheets.html#data-dictionary">速查：数据字典模板</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/datasets-data.js"></script>
+<script src="assets/js/data/dataset-previews.js"></script>
+<script src="assets/js/data/deliverables-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/toc.js"></script>
+<script src="assets/js/data-preview.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/datasets.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生信专区：从样本到结论的六条航线 | bioR</title>
+<meta name="description" content="Bulk RNA-seq、单细胞、微生物组、变异、系统发育、蛋白组六条航线：每站输入输出、检查点、常见失败，以及 R 在哪一站。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="bioinfo">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 生物信息专区</p>
+
+  <header class="special-hero">
+    <span class="kicker">BIOINFO ATLAS · 6 ROUTES</span>
+    <h1>生物信息专区</h1>
+    <p class="lede">组学不是一条「全 R」流水线。先看清航线：哪一站必须用 shell，哪一站交给 R，哪一站决定结论是否成立。</p>
+    <div class="cover-meta"><span>6 条航线</span><span>44 个站点</span><span>29 个包</span><span>11 种格式</span></div>
+  </header>
+
+  <section>
+    <h2>航线图</h2>
+    <p class="small muted">选一条航线，点任意站点看：目的、工具、输入输出、检查点与常见失败。标注 <span class="r-dot">R</span> 的站点在 R 内完成。</p>
+    <div class="filter-chips wf-tabs" id="wf-tabs" aria-label="选择组学航线"></div>
+    <p class="wf-lede" id="wf-lede"></p>
+    <p class="small muted route-hint" id="route-hint"></p>
+    <div class="route-layout">
+      <div class="route-scroll">
+        <div class="wf-route" id="route" aria-label="航线站点"></div>
+      </div>
+      <aside class="route-detail" id="route-detail" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section>
+    <h2>R 在哪一站</h2>
+    <p class="small muted">原则：重计算交给专用工具，统计建模、可视化与报告交给 R；复现性比「全 R」更重要。</p>
+    <div class="table-wrap">
+      <table class="data-table rstage-table">
+        <thead><tr><th scope="col">步骤</th><th scope="col">推荐工具</th><th scope="col">是否 R</th><th scope="col">说明</th></tr></thead>
+        <tbody>
+          <tr><td>FASTQ QC</td><td>FastQC / MultiQC</td><td><span class="stage-badge no">否</span></td><td>shell 运行；R 只读汇总报告。</td></tr>
+          <tr><td>比对 / 定量</td><td>STAR / salmon / featureCounts</td><td><span class="stage-badge part">部分</span></td><td>重计算交给专用工具；featureCounts 可在 R 内调用。</td></tr>
+          <tr><td>counts 之后</td><td>DESeq2 / edgeR / limma</td><td><span class="stage-badge yes">是</span></td><td>统计建模、QC 与可视化都在 R。</td></tr>
+          <tr><td>富集</td><td>clusterProfiler / fgsea</td><td><span class="stage-badge yes">是</span></td><td>基因集分析；背景与注释版本要记录。</td></tr>
+          <tr><td>单细胞</td><td>Seurat / Scanpy</td><td><span class="stage-badge yes">是</span></td><td>Seurat 在 R；大数据注意内存与 pseudobulk。</td></tr>
+          <tr><td>系统发育</td><td>IQ-TREE / RAxML + ggtree</td><td><span class="stage-badge part">部分</span></td><td>建树不在 R；读树、画树、比较拓扑在 R。</td></tr>
+          <tr><td>变异注释</td><td>VEP / ANNOVAR</td><td><span class="stage-badge no">否</span></td><td>注释用专用工具；R 做过滤、统计与图。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>包图谱</h2>
+    <p class="small muted">按任务分组。写「适用条件」，不写「最好的包」；<span class="in-course">●</span> 表示课程中会用到。</p>
+    <div id="pkg-groups"></div>
+  </section>
+
+  <section>
+    <h2>文件格式野外指南</h2>
+    <div class="table-wrap">
+      <table class="data-table fmt-table">
+        <thead><tr><th scope="col">格式</th><th scope="col">是什么</th><th scope="col">谁产生</th><th scope="col">R 怎么读</th><th scope="col">常见坑</th></tr></thead>
+        <tbody id="format-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>从 GEO 到差异基因</h2>
+    <p class="small muted">概念走查，不提供自动下载脚本（避免网络依赖与许可问题）。</p>
+    <ol class="geo-steps">
+      <li><b>找数据集</b>按 GSE 检索；先读样本表与实验设计，不急着下载。</li>
+      <li><b>读样本表</b>确认分组、个体、时间点与批次；样本名要和数据列对得上。</li>
+      <li><b>下载 counts 或原始数据</b>优先作者提供的 counts；原始数据要评估重跑成本。</li>
+      <li><b>检查分组与批次</b>table(group, batch)；完全混杂就停止，不要硬建模。</li>
+      <li><b>选 DE 工具</b>counts 用 DESeq2/edgeR；芯片或蛋白用 limma。</li>
+      <li><b>结果解释与富集</b>效应量、方向、FDR；富集背景用实际检测基因。</li>
+      <li><b>记录版本与参数</b>参考、注释、包版本、design 公式，全部写进报告。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>生信常见误区</h2>
+    <div class="myth-grid" id="myths"></div>
+  </section>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="chapters/ch18-rnaseq.html">第 18 章 · 转录组差异分析</a>
+      <a class="btn" href="chapters/ch17-multivariate.html">第 17 章 · PCA 与聚类</a>
+      <a class="btn" href="clinic.html">数据诊所</a>
+      <a class="btn" href="datasets.html#pika-rnaseq-counts">数据集：RNA-seq counts</a>
+    </div>
+  </section>
+
+  <noscript><p class="small muted">航线图、包图谱与误区卡片由本地 JavaScript 从 <code>assets/js/data/bioinfo-data.js</code> 渲染；R 站点表与 GEO 走查无需脚本即可阅读。</p></noscript>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/bioinfo-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/bioinfo.js"></script>
+</body>
+</html>

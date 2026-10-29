@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 2 章 向量与数据类型：把测量值放进 R | bioR</title>
+<meta name="description" content="用 12 个血红蛋白测量值学会向量、类型、NA 与强制转换：is.na、na.rm、逻辑索引与因子；含 R console、两张图、科研任务与交付物。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch02" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 2 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <!-- 1. 封面 -->
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 02 · VECTORS &amp; TYPES</span><span>STAGE I · PREPARE DATA</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">02</div>
+          <div class="cover-copy">
+            <h1>向量与数据类型：把测量值放进 R</h1>
+            <p class="cover-lede">12 只鼠兔的血红蛋白里混着 2 个 NA——均值该怎么算，取决于你怎么理解「缺失」。</p>
+            <p class="cover-question"><b>本章科研问题：</b>12 只鼠兔的血红蛋白里混着 2 个 NA，均值该怎么算？</p>
+            <div class="cover-meta">
+              <span>85 MIN</span><span>前置 ch01</span><span>数据 手工录入 + pika_physiology.csv</span><span>交付 01_vectors.R · hemoglobin_clean.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. 学习目标 -->
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>c()</code> 创建数值向量，说出「一个向量只能有一种类型」。</li>
+          <li>解释 <code>NA</code> 的含义：<b>缺失是位置，不是零</b>；用 <code>is.na()</code> 检测而不是 <code>== NA</code>。</li>
+          <li>预测 <code>mean()</code> 在有无 <code>na.rm = TRUE</code> 时的两种结果。</li>
+          <li>识别强制转换：字符里的「低」变 <code>NA</code> 时，R 悄悄告诉过你。</li>
+          <li>把分组变量设为 <code>factor</code> 并用 <code>table()</code> 清点各组 n。</li>
+          <li>用逻辑索引取出「大于 150 且不缺失」的测量值。</li>
+        </ul>
+        <p class="small muted">前置：第 1 章；数据：手工录入 12 个值；交付：<code>01_vectors.R</code>、<code>hemoglobin_clean.csv</code>。</p>
+      </section>
+
+      <!-- 3. 研究情境 -->
+      <div class="research">
+        <p>生化分析仪吐出一张小票，你把 12 只鼠兔的血红蛋白抄进 R——第 4 和第 9 只溶血了，仪器没给数值。导师在白板上写：「先算个均值」。你敲下 <code>mean()</code>，R 回了一个 <code>NA</code>。这一章解释为什么这是 R 在帮你，而不是在刁难你。</p>
+      </div>
+
+      <!-- 4. 正文 -->
+      <h2>1. 向量：一列同类的测量值</h2>
+      <p><code>c()</code> 把一组值串成一个<b>向量</b>（vector）——R 里最基本的数据容器。一个向量只能装<b>一种</b>类型：全是数字、全是文本，或全是真假值。仪器给的血红蛋白是小数（<code>double</code>），性别是文本（<code>character</code>），「是否溶血」是逻辑值（<code>logical</code>）。</p>
+
+      <article class="example-card" id="ch02-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：录入 12 个测量值，清点缺失</h3>
+          <div class="ex-meta"><span class="tag">c() · is.na</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-01"><code class="r">hb &lt;- c(155.6, 157.8, 142.6, NA, 140.5, 145.9,
+        129.1, 153.9, NA, 150.0, 162.1, 148.7)
+length(hb)
+sum(is.na(hb))</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 12
+[1] 2</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1–2 行</b>：按仪器顺序录入 12 个值；缺失的位置写 <code>NA</code>，<b>不是 0，也不是空字符串</b>。</li>
+            <li><b>第 3 行</b>：<code>length()</code> 数元素个数——包括 NA 在内是 12。</li>
+            <li><b>第 4 行</b>：<code>is.na()</code> 返回 12 个真假值，<code>sum()</code> 把 TRUE 当 1 加起来：2 个缺失。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <p>这一节没有「对照」问题：<code>c()</code>、<code>is.na()</code>、<code>length()</code> 本来就是 base R——tidyverse 建立在它们之上。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "hb": "12 个值，2 个 NA" }, "out": "", "note": "按测量顺序录入", "vector": { "cells": [
+            { "value": "155.6", "type": "dbl", "state": "active" }, { "value": "157.8", "type": "dbl" }, { "value": "142.6", "type": "dbl" },
+            { "value": "NA", "type": "dbl", "state": "na" }, { "value": "140.5", "type": "dbl" }, { "value": "145.9", "type": "dbl" }
+          ] } },
+          { "line": 3, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] 12", "note": "长度包含 NA", "vector": { "cells": [
+            { "value": "129.1", "type": "dbl" }, { "value": "153.9", "type": "dbl" }, { "value": "NA", "type": "dbl", "state": "na" },
+            { "value": "150.0", "type": "dbl" }, { "value": "162.1", "type": "dbl" }, { "value": "148.7", "type": "dbl" }
+          ] } },
+          { "line": 4, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] 2", "note": "两个缺失位置", "vector": { "cells": [
+            { "value": "NA", "type": "dbl", "state": "na" }, { "value": "155.6", "type": "dbl" }, { "value": "148.7", "type": "dbl" }
+          ] } }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch02-hb-strip">
+        <div class="plot-stage-head">
+          <span>图 2.1 · 12 个血红蛋白测量值</span>
+          <a href="../assets/figures/chapters/ch02-hb-strip.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch02-hb-strip.svg"
+               alt="条带图显示 12 个血红蛋白测量值，第 4 与第 9 个位置为问号标记的 NA，虚线为剔除缺失后的均值；缺失是位置而不是零。"
+               width="712" height="440">
+        </div>
+        <figcaption>图 2.1 · 12 个血红蛋白测量值（本章教学向量）；n = 12，其中 2 个 NA；虚线为均值 148.6 g/L（na.rm = TRUE）。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch02_hb_strip.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>2. 缺失会传染：mean 的两种结局</h2>
+      <p><b>NA 会顺着计算传播</b>：只要向量里有一个 NA，均值就是 NA。R 不是算不出来，而是在问「缺失的值你想怎么办？」——这个决定必须由研究者做，而且要写进报告。</p>
+
+      <article class="example-card" id="ch02-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：mean 的两种结局</h3>
+          <div class="ex-meta"><span class="tag">na.rm = TRUE</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-02"><code class="r">hb &lt;- c(155.6, 157.8, 142.6, NA, 140.5, 145.9,
+        129.1, 153.9, NA, 150.0, 162.1, 148.7)
+mean(hb)
+mean(hb, na.rm = TRUE)</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] NA
+[1] 148.62</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：不声明缺失处理，均值就是 <code>NA</code>——这是<b>保护</b>，防止你无意识地忽略缺失。</li>
+            <li><b>第 4 行</b>：<code>na.rm = TRUE</code> 表示「剔除缺失后计算」：10 个有效值，均值 148.62 g/L。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 NA 替换成 0 再算均值（<code>replace(hb, is.na(hb), 0)</code>）会得到 123.85 g/L——仪器没测到不等于血红蛋白为零。见下方图 2.2 的第三根柱子。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "hb": "12 个值，2 个 NA" }, "out": "", "note": "教学向量就位", "vector": null },
+          { "line": 3, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] NA", "note": "缺失传播：R 拒绝给出含糊的答案", "vector": null },
+          { "line": 4, "vars": { "hb": "有效 n = 10" }, "out": "[1] 148.62", "note": "剔除缺失：10 个有效值", "vector": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch02-mean-na">
+        <div class="plot-stage-head">
+          <span>图 2.2 · 同一向量的三种均值</span>
+          <a href="../assets/figures/chapters/ch02-mean-na.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch02-mean-na.svg"
+               alt="三根柱子对比同一向量的三种均值：传播 NA 无结果、剔除缺失得 148.6、把缺失当零得 123.9；处理缺失的方式直接改变结论。"
+               width="712" height="440" loading="lazy">
+        </div>
+        <figcaption>图 2.2 · 同一向量的三种均值；n = 12（有效 n = 10）；na.rm = TRUE 是正确做法，NA 当零是常见错误。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch02_mean_na.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <div class="stats">
+        <p>剔除缺失（complete-case）是合法的默认，但必须在<b>看结果之前</b>决定、并在报告中写明有效 n。缺失机制本身（为什么溶血）是第 4 章 QC 和第 15 章混合模型的话题。</p>
+      </div>
+
+      <h2>3. 找出缺失、扔掉缺失</h2>
+      <p>检测缺失用 <code>is.na()</code>。<b>永远不要写 <code>hb == NA</code></b>：连 NA 自己都不知道自己等不等于 NA，所以这个比较的结果全是 NA。</p>
+
+      <article class="example-card" id="ch02-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：定位缺失，取出完整值</h3>
+          <div class="ex-meta"><span class="tag">which · 逻辑索引</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-03"><code class="r">hb &lt;- c(155.6, 157.8, 142.6, NA, 140.5, 145.9,
+        129.1, 153.9, NA, 150.0, 162.1, 148.7)
+which(is.na(hb))
+hb[!is.na(hb)]</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 4 9
+ [1] 155.6 157.8 142.6 140.5 145.9 129.1 153.9 150.0 162.1 148.7</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：<code>which()</code> 给出缺失的<b>位置</b>：第 4 和第 9 只。</li>
+            <li><b>第 4 行</b>：方括号是取子集；<code>!is.na(hb)</code> 是「不是缺失」的逻辑向量，12 个位置里 TRUE 的留下——得到 10 个完整值。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <p><code>na.omit(hb)</code> 一行等效（返回去掉 NA 的向量，还带一个属性记录剔除位置）。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "hb": "12 个值，2 个 NA" }, "out": "", "note": "教学向量就位", "vector": null },
+          { "line": 3, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] 4 9", "note": "缺失在第 4、9 位", "vector": { "cells": [
+            { "value": "142.6", "type": "dbl" }, { "value": "NA", "type": "dbl", "state": "na" }, { "value": "140.5", "type": "dbl" }
+          ] } },
+          { "line": 4, "vars": { "hb": "有效 n = 10" }, "out": "[1] 155.6 157.8 …", "note": "逻辑索引取出 10 个完整值", "vector": null }
+        ] }</script>
+      </article>
+
+      <h2>4. 类型与强制转换：R 悄悄告诉过你</h2>
+      <p>把一个字符向量交给 <code>as.numeric()</code>，能转的转，不能转的变 NA——并发出的警告。忽略警告是新手丢数据的头号方式。</p>
+
+      <article class="example-card" id="ch02-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：强制转换与那个著名的警告</h3>
+          <div class="ex-meta"><span class="tag amber">as.numeric</span><span class="tag red">高频坑</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-04"><code class="r">as.numeric(c("155.6", "142.6", "低"))</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">Warning message: NAs introduced by coercion
+[1] 155.6 142.6    NA</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：前两个字符串成功转成数字；第三个「低」不是数字，变 <code>NA</code>。</li>
+            <li><b>警告</b>：<code>NAs introduced by coercion</code>——R 明确告诉你它强行转换时引入了缺失。这条警告值得停下逐字读完。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>读 CSV 时某列混进一个「&lt;0.05」，整列被读成字符；之后 <code>as.numeric()</code> 一转，超出检测限的值全部变 NA 而没人注意。规则：<b>转换后立刻 <code>sum(is.na())</code> 对账</b>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "x": "155.6, 142.6, NA" }, "out": "Warning message: NAs introduced by coercion", "note": "「低」变 NA，警告即对账提醒", "vector": { "cells": [
+            { "value": "155.6", "type": "dbl" }, { "value": "142.6", "type": "dbl" }, { "value": "NA", "type": "dbl", "state": "coerced" }
+          ], "coerce": "character → double：不能解析的值变 NA 并发出警告" } }
+        ] }</script>
+      </article>
+
+      <h2>5. 因子：分组变量的正确姿势</h2>
+      <p>性别、海拔组、处理组是<b>分类变量</b>。R 用 <code>factor</code> 表示：值背后有一套固定的<b>水平</b>（levels）。统计建模和画图都依赖水平顺序——第 12 章的 ANOVA 参照组就由它决定。</p>
+
+      <article class="example-card" id="ch02-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：把性别设为因子并清点各组</h3>
+          <div class="ex-meta"><span class="tag">factor · table</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-05"><code class="r">sex &lt;- c("F", "F", "M", "F", "M", "M", "F", "M", "F", "M", "F", "M")
+sex_f &lt;- factor(sex, levels = c("F", "M"))
+table(sex_f)</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">sex_f
+F M 
+6 6 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：12 个字符值。</li>
+            <li><b>第 2 行</b>：转为因子并<b>指定水平顺序</b>（F 在前）——顺序决定表格列序、图的图例序和模型的参照组。</li>
+            <li><b>第 3 行</b>：<code>table()</code> 清点每组个数：6 雌 6 雄，与设计一致。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "sex": "12 个字符值" }, "out": "", "note": "字符向量", "vector": null },
+          { "line": 2, "vars": { "sex_f": "factor，2 水平" }, "out": "", "note": "指定水平顺序 F, M", "vector": null },
+          { "line": 3, "vars": { "sex_f": "factor，2 水平" }, "out": "F 6 / M 6", "note": "各组 n 与设计一致", "vector": null }
+        ] }</script>
+      </article>
+
+      <h2>6. 索引：只取需要的测量值</h2>
+
+      <article class="example-card" id="ch02-ex-06">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 6：按位置与按条件取子集</h3>
+          <div class="ex-meta"><span class="tag">[] 逻辑索引</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch02-ex-06"><code class="r">hb &lt;- c(155.6, 157.8, 142.6, NA, 140.5, 145.9,
+        129.1, 153.9, NA, 150.0, 162.1, 148.7)
+hb[c(1, 3, 11)]
+hb[hb &gt; 150 &amp; !is.na(hb)]</code></pre>
+        <div class="ex-output" data-output-for="ch02-ex-06">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 155.6 142.6 162.1
+[1] 155.6 157.8 153.9 162.1</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：按位置取第 1、3、11 个值——注意 NA 的原位置不在里面。</li>
+            <li><b>第 4 行</b>：两个条件同时满足：<code>hb &gt; 150</code> 且<b>不缺失</b>。少了 <code>!is.na(hb)</code>，比较含 NA 的位置会得到 NA，结果里混进 NA。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>hb[hb &gt; 150]</code> 的结果末尾会带一个 NA——比较本身对缺失位置无定义。凡是比较，先想缺失。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "hb": "12 个值，2 个 NA" }, "out": "", "note": "教学向量就位", "vector": null },
+          { "line": 3, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] 155.6 142.6 162.1", "note": "按位置取 3 个", "vector": null },
+          { "line": 4, "vars": { "hb": "12 个值，2 个 NA" }, "out": "[1] 155.6 157.8 153.9 162.1", "note": "双条件：>150 且不缺失", "vector": null }
+        ] }</script>
+      </article>
+
+      <!-- 5. 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：清洗血红蛋白向量</h2>
+        <p>把本章的手工录入变成一份可追溯的清洗脚本。完成后你将得到 <code>hemoglobin_clean.csv</code>。</p>
+        <ol class="task-steps">
+          <li><b>录入</b>：在 <code>01_vectors.R</code> 里按仪器顺序录入 12 个值（含 2 个 NA），加注释说明单位 g/L。</li>
+          <li><b>对账</b>：<code>length()</code> = 12、<code>sum(is.na())</code> = 2；与仪器小票核对每个值。</li>
+          <li><b>查范围</b>：鼠兔血红蛋白合理区间约 100–240 g/L；<code>range(hb, na.rm = TRUE)</code> 确认没有抄错小数点。</li>
+          <li><b>导出</b>：把剔除 NA 后的 10 个值写成 <code>hemoglobin_clean.csv</code>（<code>write_csv(data.frame(hb_clean = hb[!is.na(hb)]), here::here("data/hemoglobin_clean.csv"))</code>），并在脚本注释里写明有效 n = 10。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>清洗前后都记录了 n（12 → 10），缺下去的 2 个有原因（溶血）。</li>
+            <li>脚本里没有任何手改数值；重跑结果一致。</li>
+            <li>CSV 列名 <code>hb_clean</code>，单位写在 README。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 6. 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in mean(hb_mass) : object 'hb_mass' not found</p>
+        <p><b>病因</b>：对象名拼错或大小写不符；报错引号里就是 R 在找的名字。</p>
+        <p><b>修复</b>：<code>ls()</code> 列出当前所有对象，逐字符核对。</p>
+        <p><b>预防</b>：用 RStudio 补全（Tab 键），命名统一 snake_case。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Warning message: NAs introduced by coercion</p>
+        <p><b>病因</b>：这是<b>警告</b>不是报错——强制转换把无法解析的值变成了 NA，数据悄悄少了。</p>
+        <p><b>修复</b>：转换前后各 <code>sum(is.na())</code> 对账；找出不能解析的原值再决定怎么处理。</p>
+        <p><b>预防</b>：读数据时指定列类型（第 4 章 <code>col_types</code>）。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in if (hb > 150) : the condition has length > 1</p>
+        <p><b>病因</b>：<code>if()</code> 只接受单个真假值，你给了它一整条向量——多条件判断应该用 <code>[]</code> 索引或 <code>ifelse()</code>。</p>
+        <p><b>修复</b>：<code>hb[hb &gt; 150 &amp; !is.na(hb)]</code>；逐元素分支用 <code>ifelse(hb &gt; 150, "high", "normal")</code>。</p>
+        <p><b>预防</b>：看到 condition has length 报错，先想「我是不是把向量当成了单个值」。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 7. 科研判断 -->
+      <div class="stats">
+        <p>缺失的处理方式（剔除 / 插补 / 当零）是<b>研究决定</b>，不是代码细节；它改变均值（148.6 vs 123.9），也改变结论。决定要写进方案，而不是写进某次调试会话。</p>
+      </div>
+      <div class="warn">
+        <p>有效 n 要跟真话：本章的均值基于 10 个值，不是 12 个。报告里写 "n = 10（2 例溶血剔除）" 比一个漂亮但虚假的 n = 12 更有说服力。</p>
+      </div>
+
+      <!-- 8. 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Hemoglobin values below the detection range were not observed; two measurements were excluded because of sample hemolysis, leaving 10 valid values for analysis.</p>
+        <p class="small muted">中文：未发现低于检测区间的值；2 例因溶血剔除，10 个有效值进入分析。</p>
+      </blockquote>
+
+      <!-- 9. 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>向量是同类型测量值的序列；NA 是「这个位置没有值」，它会传染、要用 is.na() 检测、由 na.rm = TRUE 显式放行。分组变量设为因子，比较先想缺失。</p>
+      </div>
+
+      <!-- 10. 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch02">
+        <li><label><input type="checkbox"><span>我能解释为什么 <code>mean()</code> 返回 NA 是保护而不是故障</span></label></li>
+        <li><label><input type="checkbox"><span>我能用 <code>is.na()</code> 和 <code>which()</code> 定位缺失位置</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出 <code>hb == NA</code> 错在哪里</span></label></li>
+        <li><label><input type="checkbox"><span>我看到 "NAs introduced by coercion" 时知道去对账</span></label></li>
+        <li><label><input type="checkbox"><span>我能把性别设为因子并清点各组 n</span></label></li>
+        <li><label><input type="checkbox"><span>我能写出「大于 150 且不缺失」的双条件索引</span></label></li>
+      </ul>
+
+      <!-- 11. 测验 -->
+      <section class="quiz" id="quiz" data-source="ch02">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：向量与数据类型",
+          "questions": [
+            { "type": "mcq", "q": "向量 x 里混着 1 个 NA，<code>mean(x)</code> 的结果是？",
+              "options": ["0", "NA", "其余值的均值", "报错"], "answer": 1,
+              "explain": "缺失会传播：只要不声明 na.rm，均值就是 NA。这是 R 强迫你正视缺失。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "检测向量里哪些位置是 NA，正确写法是？",
+              "options": ["x == NA", "is.na(x)", "x = NA", "na(x)"], "answer": 1,
+              "explain": "与 NA 比较的结果全是 NA；is.na() 是唯一正确的检测。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "把缺失值替换成 0 再算均值，是一种可接受的数据清洗。",
+              "answer": false,
+              "explain": "仪器没测到 ≠ 测量值为 0。图 2.2 里这一步把均值从 148.6 拉到 123.9。剔除要写理由。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "as.numeric(c(\"1\", \"2\", \"x\")) 发出的警告原文是 NAs introduced by ____。",
+              "answer": ["coercion"], "explain": "coercion（强制转换）；看到它就立刻 sum(is.na()) 对账。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "12 个值中 2 个 NA，<code>mean(x, na.rm = TRUE)</code> 的分母是？",
+              "options": ["12", "10", "2", "不确定"], "answer": 1,
+              "explain": "na.rm 剔除缺失后按有效值计数：有效 n = 10，报告里也要这么写。", "skill": "stats", "difficulty": 1 },
+            { "type": "mcq", "q": "<code>hb[hb > 150]</code> 的结果末尾为什么可能多一个 NA？",
+              "options": ["R 自动补齐长度", "对 NA 位置的比较结果是 NA，被索引保留", "150 太大", "hb 类型错误"], "answer": 1,
+              "explain": "含 NA 的位置比较无定义，结果 NA；逻辑索引把 NA 也保留。加 !is.na(hb)。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：取出 hb 中大于 150 且不缺失的值。",
+              "code": "hb[hb > 150 & ____(hb)]",
+              "blanks": [ { "answer": ["!is.na"] } ],
+              "explain": "双条件：>150 且 !is.na()。漏掉后者结果里会混入 NA。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "把性别列从字符转成因子的主要好处是？",
+              "options": ["节省内存", "固定水平集合与顺序，供统计与画图使用", "可以出现 NA", "运行更快"], "answer": 1,
+              "explain": "factor 的 levels 决定表格列序、图例顺序与模型参照组。", "skill": "biology", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 12. 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 pika-hypoxia 项目；hemoglobin_clean.csv 放 data/。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>01_vectors.R</code></td><td>录入、对账、范围检查、导出</td><td>ch03 数据框的列就是这样的向量</td></tr>
+            <tr><td><code>hemoglobin_clean.csv</code></td><td>10 个有效值，注明剔除原因</td><td>ch10 分布描述的示例数据</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：一条向量是「一列」，一张表是「很多列的约定」——什么是一行一个个体？</p>
+      </section>
+
+      <!-- 13. 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#vectors-index">速查：向量与索引</a>
+          <a class="btn" href="../cheatsheets.html#na-types">速查：缺失值、类型与强制转换</a>
+          <a class="btn" href="../triage.html#na-introduced-coercion">急救室：NAs introduced by coercion</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

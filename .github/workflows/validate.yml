@@ -1,0 +1,28 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.5.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install R packages
+        run: |
+          options(repos = c(CRAN = "https://cloud.r-project.org"))
+          install.packages(c("readr","dplyr","tidyr","purrr","stringr","forcats",
+            "ggplot2","svglite","scales","patchwork","readxl","writexl","here",
+            "janitor","skimr","broom","emmeans","car","effectsize","rstatix","FSA",
+            "pwr","performance","digest","jsonlite"))
+        shell: Rscript {0}
+      - name: Build pipeline
+        run: bash tools/build-all.sh

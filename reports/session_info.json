@@ -1,0 +1,9 @@
+{
+  "r_version": "R version 4.5.2 (2025-10-31 ucrt)",
+  "platform": "x86_64-w64-mingw32",
+  "packages": {
+    "readr": "2.2.0",
+    "dplyr": "1.2.1",
+    "ggplot2": "4.0.3"
+  }
+}

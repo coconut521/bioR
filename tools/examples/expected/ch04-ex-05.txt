@@ -1,0 +1,7 @@
+# A tibble: 4 × 3
+  check             expected found
+  <chr>             <chr>    <chr>
+1 rows              60       60   
+2 unique_id         60       60   
+3 hb_missing        2        2    
+4 mass_out_of_range 0        0    

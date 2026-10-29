@@ -1,0 +1,6 @@
+# A tibble: 3 × 5
+  altitude_group     n n_valid hb_mean hb_sd
+  <chr>          <int>   <int>   <dbl> <dbl>
+1 high              20      19    178.  13.7
+2 low               20      19    149    8  
+3 mid               20      20    165.   9.3

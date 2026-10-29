@@ -1,0 +1,3 @@
+         model estimate   SE df    p
+1  lm: 36 rows    -3.46 5.18 34 0.51
+2 lmer: 12 ids    -3.46 8.53 10 0.69

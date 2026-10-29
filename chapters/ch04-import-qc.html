@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 4 章 导入、导出与数据质量：从仪器到 R | bioR</title>
+<meta name="description" content="酶标仪 CSV、Excel 记录、样本表三路数据的无损导入：skip、col_types、clean 列名、缺失/重复/范围 QC，产出可进补充材料的 qc_report。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch04" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 4 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 04 · IMPORT, EXPORT &amp; QC</span><span>STAGE I · PREPARE DATA</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">04</div>
+          <div class="cover-copy">
+            <h1>导入、导出与数据质量：从仪器到 R</h1>
+            <p class="cover-lede">酶标仪 CSV 有注释行，实验记录在 Excel，样本表是 CSV——三路数据必须无损进 R，并且先 QC 再分析。</p>
+            <p class="cover-question"><b>本章科研问题：</b>酶标仪 CSV、Excel 记录和样本表，怎样无损地进 R 并对得上？</p>
+            <div class="cover-meta">
+              <span>105 MIN</span><span>前置 ch03</span><span>数据 plate_reader · notebook · metadata_raw</span><span>交付 02_import_qc.R · qc_report.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>识别仪器导出的注释行，用 <code>skip</code> 跳过并验证维度。</li>
+          <li>读多 sheet 的 Excel：<code>excel_sheets()</code> 先侦察，再按名字读。</li>
+          <li>重命名混乱列名，避免空格和特殊字符进 R。</li>
+          <li>写一个四项 QC：行数、ID 唯一、缺失计数、范围检查。</li>
+          <li>把 QC 结果导出为 <code>qc_report.csv</code>——它能直接进论文补充材料。</li>
+          <li>记住规则：<b>QC 报告不是可选附件，是分析的前置条件</b>。</li>
+        </ul>
+        <p class="small muted">前置：第 3 章；数据：<code>plate_reader_raw.csv</code>、<code>pika_lab_notebook.xlsx</code>、<code>pika_physiology.csv</code>；交付：见封面。</p>
+      </section>
+
+      <div class="research">
+        <p>96 孔板的原始导出文件前三行是仪器注释（日期、模式、警告），96 行读数跟在后面；实验记录本是一个两个 sheet 的 Excel；生理样本表是干净 CSV。导师的要求只有一句：「三份东西进 R 以后，行数、列名、缺失都要能对上账——把对账过程给我留档。」</p>
+      </div>
+
+      <h2>1. 别信仪器：先看裸导入会发生什么</h2>
+      <p>直接 <code>read_csv()</code> 仪器导出，注释行会被当成表头和数据——列数变成 1，第 99「行」其实是真表头。R 甚至发了警告提醒你解析有问题。</p>
+
+      <article class="example-card" id="ch04-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：裸导入仪器 CSV（反面示范）</h3>
+          <div class="ex-meta"><span class="tag red">反面示范</span><span class="tag">read_csv</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch04-ex-01"><code class="r">library(readr)
+plate_raw &lt;- read_csv(here::here("assets/data/plate_reader_raw.csv"),
+                      show_col_types = FALSE)
+ncol(plate_raw)
+nrow(plate_raw)
+names(plate_raw)[1]</code></pre>
+        <div class="ex-output" data-output-for="ch04-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">Warning message: One or more parsing issues, call `problems()` on your data frame for details,
+e.g.:
+  dat &lt;- vroom(...)
+  problems(dat)
+[1] 1
+[1] 99
+[1] "# Plate reader export - BioSim xMark (simulated teaching data)"</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：没加 <code>skip</code>——readr 把第一行注释当成了表头。</li>
+            <li><b>输出</b>：1 列、99 行、列名是整句注释。96 个真实读数全被挤进了一个字符列。</li>
+            <li><b>警告</b>：readr 明确说「解析有问题，调用 problems() 看细节」——警告不是装饰。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>「能跑就行」：裸导入的数据没有报错，只是错的。维度对不上（1 列 ≠ 4 列）就是 QC 红旗。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "只挂 readr", "pipeline": null },
+          { "line": 2, "vars": { "plate_raw": "99 行 × 1 列（错误）" }, "out": "", "note": "注释行污染了整个解析", "pipeline": { "rows": 99, "cols": 1 } },
+          { "line": 5, "vars": { "plate_raw": "99 行 × 1 列（错误）" }, "out": "\"# Plate reader export …\"", "note": "列名 = 第一行注释", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <h2>2. skip 跳注释，rename 正列名</h2>
+
+      <article class="example-card" id="ch04-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：skip = 3 + 重命名</h3>
+          <div class="ex-meta"><span class="tag green">科研必会</span><span class="tag">rename</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch04-ex-02"><code class="r">library(readr); library(dplyr)
+plate &lt;- read_csv(here::here("assets/data/plate_reader_raw.csv"),
+                  skip = 3, show_col_types = FALSE) |&gt;
+  rename(well_id = well, od600 = od600, temp_c = temperature_c)
+ncol(plate)
+nrow(plate)
+names(plate)</code></pre>
+        <div class="ex-output" data-output-for="ch04-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 4
+[1] 96
+[1] "well_id" "od600"   "temp_c"  "cycle"  </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：<code>skip = 3</code> 跳过三行注释，真实表头顶上来了。</li>
+            <li><b>第 4–5 行</b>：管道重命名。<code>well</code> 改成 <code>well_id</code> 是为了防止和将来 join 的键撞名；列名保持小写下划线。</li>
+            <li><b>输出</b>：4 列 × 96 行——与仪器设置一致，QC 过了第一关。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>janitor 对照</h4>
+          <p><code>janitor::clean_names()</code> 一行把全部列名转成 snake_case，适合列很多的情况；本章列少，显式 <code>rename()</code> 意图更清楚。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载 readr 与 dplyr", "pipeline": null },
+          { "line": 2, "vars": { "plate": "96 × 4" }, "out": "", "note": "skip 后维度正确", "pipeline": { "rows": 96, "cols": 4 } },
+          { "line": 7, "vars": { "plate": "96 × 4" }, "out": "\"well_id\" \"od600\" …", "note": "列名可读且无特殊字符", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch04-od600-hist">
+        <div class="plot-stage-head">
+          <span>图 4.1 · 96 孔 OD600 分布</span>
+          <a href="../assets/figures/chapters/ch04-od600-hist.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch04-od600-hist.svg"
+               alt="96 孔 OD600 读数的直方图，主峰在 0.2 到 0.6 之间，右尾延伸到 1.4；范围检查确认没有负值和爆表孔。"
+               width="712" height="440" loading="lazy">
+        </div>
+        <figcaption>图 4.1 · 96 孔 OD600 分布（skip = 3 导入）；n = 96；组距 0.1。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch04_od600_hist.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>3. Excel：先侦察 sheet，再按名读</h2>
+
+      <article class="example-card" id="ch04-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：读两 sheet 的实验记录</h3>
+          <div class="ex-meta"><span class="tag">readxl</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch04-ex-03"><code class="r">library(readxl)
+excel_sheets(here::here("assets/data/pika_lab_notebook.xlsx"))
+incidents &lt;- read_excel(here::here("assets/data/pika_lab_notebook.xlsx"),
+                        sheet = "incidents")
+incidents</code></pre>
+        <div class="ex-output" data-output-for="ch04-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "samples"   "incidents"
+# A tibble: 5 × 3
+  id    incident                                       date               
+  &lt;chr&gt; &lt;chr&gt;                                          &lt;dttm&gt;             
+1 P017  hemolysis - hemoglobin unreadable (NA)         2026-05-08 00:00:00
+2 P042  hemolysis - hemoglobin unreadable (NA)         2026-05-22 00:00:00
+3 P023  possible double counting - mass unusually high 2026-05-15 00:00:00
+4 P048  juvenile - mass unusually low                  2026-05-29 00:00:00
+5 P005  reagent batch changed mid-run                  2026-05-03 00:00:00</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 2 行</b>：<code>excel_sheets()</code> 侦察——不要猜 sheet 名。</li>
+            <li><b>第 3–4 行</b>：按<b>名字</b>（不是序号）读 incidents：别人重排 sheet 顺序时脚本不断。</li>
+            <li><b>输出</b>：5 条异常记录，其中两条「溶血」正好解释第 2 章的两个 NA——QC 线索来自原始记录。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载 readxl", "pipeline": null },
+          { "line": 2, "vars": {}, "out": "\"samples\" \"incidents\"", "note": "先侦察 sheet 名", "pipeline": null },
+          { "line": 5, "vars": { "incidents": "5 × 3" }, "out": "5 行异常记录", "note": "溶血 → 血红蛋白 NA 的来源", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <h2>2'. 补充：problems() 与 col_types</h2>
+      <p>readr 每次解析都会留下「解析问题清单」。用 <code>problems()</code> 查看；列类型可用 <code>col_types = cols(...)</code> 显式指定，避免猜测错误。第 7 章会遇到 join 类型的坑，第 18 章会遇到 counts 必须是整数的坑——都始于导入这一步。</p>
+
+      <h2>4. QC：四项检查，一次对账</h2>
+
+      <article class="example-card" id="ch04-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：对生理表跑四项 QC</h3>
+          <div class="ex-meta"><span class="tag green">科研必会</span><span class="tag">QC</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch04-ex-04"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+sum(is.na(pika$hemoglobin_g_l))
+sum(duplicated(pika$id))
+sum(pika$body_mass_g &lt; 110 | pika$body_mass_g &gt; 240, na.rm = TRUE)</code></pre>
+        <div class="ex-output" data-output-for="ch04-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 2
+[1] 0
+[1] 0</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：缺失计数 = 2，与数据字典「NA = 溶血」对账。</li>
+            <li><b>第 5 行</b>：ID 重复 = 0（第 3 章的检查，进 QC 报告留档）。</li>
+            <li><b>第 6 行</b>：体重越界 = 0——注意 ch02 见过的「先想缺失」：范围比较带 <code>na.rm = TRUE</code>。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "pipeline": null },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "[1] 2", "note": "缺失与字典一致", "pipeline": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "[1] 0", "note": "ID 唯一", "pipeline": null },
+          { "line": 6, "vars": { "pika": "60 × 11" }, "out": "[1] 0", "note": "无越界", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch04-qc-dashboard">
+        <div class="plot-stage-head">
+          <span>图 4.2 · 导入 QC 四项检查</span>
+          <a href="../assets/figures/chapters/ch04-qc-dashboard.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch04-qc-dashboard.svg"
+               alt="四块绿色 PASS 面板：行数 60、ID 唯一 60、血红蛋白缺失 2、体重越界 0——导入 QC 四项检查全部通过。"
+               width="712" height="336" loading="lazy">
+        </div>
+        <figcaption>图 4.2 · 导入 QC 四项检查；n = 60；缺失计数与数据字典对账（血红蛋白 2 个 NA = 溶血）。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch04_qc_dashboard.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>5. 把 QC 变成一份可交档的报告</h2>
+
+      <article class="example-card" id="ch04-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：qc_report 表——期望值 vs 实查值</h3>
+          <div class="ex-meta"><span class="tag green">科研必会</span><span class="tag">tibble</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch04-ex-05"><code class="r">library(readr); library(dplyr); library(writexl)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+qc &lt;- tibble(
+  check = c("rows", "unique_id", "hb_missing", "mass_out_of_range"),
+  expected = c("60", "60", "2", "0"),
+  found = c(as.character(nrow(pika)),
+            as.character(n_distinct(pika$id)),
+            as.character(sum(is.na(pika$hemoglobin_g_l))),
+            as.character(sum(pika$body_mass_g &lt; 110 |
+                               pika$body_mass_g &gt; 240, na.rm = TRUE))))
+qc</code></pre>
+        <div class="ex-output" data-output-for="ch04-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 4 × 3
+  check             expected found
+  &lt;chr&gt;             &lt;chr&gt;    &lt;chr&gt;
+1 rows              60       60   
+2 unique_id         60       60   
+3 hb_missing        2        2    
+4 mass_out_of_range 0        0    </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–9 行</b>：<code>tibble()</code> 建 QC 表：<b>expected 来自数据字典</b>（设计决定），<b>found 来自实查</b>。</li>
+            <li><b>对账</b>：expected == found 逐行成立，QC 通过；任何一行不一致，先停下找原因，不许继续分析。</li>
+            <li><b>第 1 行</b>：挂了 writexl——正式任务里 <code>write_csv(qc, here::here("data/qc_report.csv"))</code> 把报告落盘。</li>
+          </ul>
+        </div>
+        <div class="stats">
+          <p>QC 报告是「分析合法性的证据链」：expected 由设计写出（60 只、3 组、字典缺失数），found 由代码实查。两者都进版本库，补充材料直接引用。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "pipeline": null },
+          { "line": 4, "vars": { "qc": "4 × 3" }, "out": "", "note": "expected 写死（设计），found 实查", "pipeline": null },
+          { "line": 13, "vars": { "qc": "4 × 3" }, "out": "# A tibble: 4 × 3", "note": "逐行对账全 PASS", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：三路导入 + qc_report.csv</h2>
+        <p>把本章示例串成 <code>02_import_qc.R</code>。完成后你将得到 <code>qc_report.csv</code>。</p>
+        <ol class="task-steps">
+          <li><b>仪器 CSV</b>：<code>skip = 3</code> 导入，重命名列名，验证 96 × 4。</li>
+          <li><b>Excel</b>：读 incidents sheet，确认 5 条异常与数据缺失对应。</li>
+          <li><b>QC 四项</b>：对 pika 跑行数/ID/缺失/范围，写成 expected-vs-found 表。</li>
+          <li><b>落盘</b>：<code>write_csv(qc, here::here("data/qc_report.csv"))</code>；在脚本顶部注释写明检查日期与依据的字典版本。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>qc_report.csv 每行 expected == found。</li>
+            <li>脚本无 setwd、无裸导入（注释行已跳过）。</li>
+            <li>重跑输出一致（确定性）。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: 'assets/data/plate_reader_raw.csv' does not exist in current working directory ('C:/…/reports')…</p>
+        <p><b>病因</b>：当前工作目录不是项目根（你在 reports/ 里跑了脚本），或文件名拼错。</p>
+        <p><b>修复</b>：<code>here::here()</code> 拼路径 + <code>list.files()</code> 核对。</p>
+        <p><b>预防</b>：脚本永远从项目根或用 here 引用；报错末尾的 working directory 信息要读。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Warning message: One or more parsing issues, call `problems()` …</p>
+        <p><b>病因</b>：readr 猜列类型时遇到冲突行（注释、缺分隔符）。</p>
+        <p><b>修复</b>：<code>problems(plate_raw)</code> 逐条看；该 skip 的 skip、该指定 col_types 的指定。</p>
+        <p><b>预防</b>：导入后立刻 <code>dim()</code> + <code>names()</code> 与源文件对照。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Can't find sheet 'Incidents' …</p>
+        <p><b>病因</b>：sheet 名大小写或拼写与 excel_sheets() 列出的不一致。</p>
+        <p><b>修复</b>：照 <code>excel_sheets()</code> 的原文写；按名不按序号。</p>
+        <p><b>预防</b>：Excel 交付时约定 sheet 命名规范。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p>先 QC 再分析：QC 结果是排除规则和有效 n 的依据，要进补充材料。数据字典里 missing = 2 不是「知道就好」——它是 expected 列的来源。</p>
+      </div>
+      <div class="warn">
+        <p>类型转换的丢失是静默的：超出检测限的「&lt;0.05」、混进单位的「3.2 mg」都会让整列变字符，as.numeric 一转变 NA。转换前后必须 sum(is.na()) 对账（第 2 章的规则在导入场景同样成立）。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Raw instrument exports were imported programmatically (readr 2.2.0) with header comments skipped; data quality was verified against a pre-registered checklist covering row count, identifier uniqueness, missingness, and biologically plausible ranges.</p>
+        <p class="small muted">中文：仪器原始导出以程序导入（readr 2.2.0）并跳过表头注释；按预登记清单核查行数、标识符唯一性、缺失与生物学合理范围。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>导入三件套：skip 跳注释、rename 正列名、dim/names 对维度。QC 四件套：行数、ID、缺失、范围——expected 来自字典，found 来自实查，对账报告落盘。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch04">
+        <li><label><input type="checkbox"><span>我能解释裸导入仪器 CSV 为什么得到 1 列 99 行</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 skip 和 excel_sheets() 侦察再导入</span></label></li>
+        <li><label><input type="checkbox"><span>我能写出 expected-vs-found 的 QC 表并解释为什么要两列</span></label></li>
+        <li><label><input type="checkbox"><span>我会在范围检查里带上 na.rm = TRUE 并说明原因</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 qc_report.csv 在论文里的位置（补充材料）</span></label></li>
+        <li><label><input type="checkbox"><span>遇到 parsing issues 我会调 problems() 而不是忽略警告</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch04">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：导入与 QC",
+          "questions": [
+            { "type": "mcq", "q": "裸导入仪器 CSV 得到 1 列 99 行，最可能的解释是？",
+              "options": ["文件损坏", "注释行被当成表头和数据", "编码错误", "列太多"], "answer": 1,
+              "explain": "前三行注释成为表头和数据；skip = 3 后恢复 4 列 96 行。", "skill": "repro", "difficulty": 1 },
+            { "type": "mcq", "q": "QC 表为什么要 expected 和 found 两列？",
+              "options": ["好看", "expected 来自设计/字典，found 来自实查，两者对账才是证据", "导出需要", "没有区别"], "answer": 1,
+              "explain": "只有 found 是「记录」，加上 expected 才是「检查」——不一致即红旗。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "read_csv 没报错就意味着解析正确，可以直接分析。",
+              "answer": false,
+              "explain": "裸导入不报错但结果全错；导入后立刻 dim()/names() 对照源文件。", "skill": "repro", "difficulty": 1 },
+            { "type": "fill", "q": "查看 readr 解析问题清单的函数：____(plate_raw)。",
+              "answer": ["problems"], "explain": "readr 把解析问题存在属性里，problems() 调出来逐条看。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "Excel 按 sheet 序号（sheet = 2）读取的风险是？",
+              "options": ["读取变慢", "别人重排 sheet 后读到错误数据", "类型丢失", "没有风险"], "answer": 1,
+              "explain": "按名字读对重排免疫；按序号读是隐性的顺序依赖。", "skill": "repro", "difficulty": 2 },
+            { "type": "mcq", "q": "范围检查 sum(x < 110 | x > 240, na.rm = TRUE) 里 na.rm 的作用是？",
+              "options": ["删除行", "NA 参与比较会得 NA，sum 无法计数；先剔除", "四舍五入", "没有作用"], "answer": 1,
+              "explain": "第 2 章的规则：比较先想缺失；na.rm 让 NA 不进计数。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；QC 报告与字典版本挂钩。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>02_import_qc.R</code></td><td>三路导入 + QC 四项</td><td>ch05 把 QC 写成函数批量跑</td></tr>
+            <tr><td><code>qc_report.csv</code></td><td>expected-vs-found 对账表</td><td>ch14 报告的补充材料</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：三个批次的 CSV 要跑同一套 QC——复制粘贴三次，还是写一个函数？</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#import-export">速查：导入导出</a>
+          <a class="btn" href="../cheatsheets.html#data-dictionary">速查：数据字典模板</a>
+          <a class="btn" href="../datasets.html#plate-reader-raw">数据集：plate_reader_raw</a>
+          <a class="btn" href="../triage.html">急救室：路径与解析类报错</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

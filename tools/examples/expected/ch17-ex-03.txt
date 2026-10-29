@@ -1,0 +1,2 @@
+                 file exists PC1_pct PC2_pct
+1 figures/fig_pca.svg   TRUE    12.8     9.7

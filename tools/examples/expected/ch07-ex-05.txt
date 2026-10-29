@@ -1,0 +1,8 @@
+# A tibble: 5 × 2
+  check            value
+  <chr>            <int>
+1 samples_in_sheet    12
+2 matched_samples     12
+3 unmatched_meta       0
+4 unmatched_counts     0
+5 joined_rows      24000

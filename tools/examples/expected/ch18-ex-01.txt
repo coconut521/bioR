@@ -1,0 +1,5 @@
+    group batch1 batch2
+1 control      6      0
+2 hypoxia      0      6
+  genes samples 
+   2000      12 

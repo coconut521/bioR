@@ -1,0 +1,7 @@
+       model   AIC  LRT    p singular
+1    id only 287.6   NA   NA    FALSE
+2 id + batch 289.6 0.07 0.79    FALSE
+       grp       vcov
+1       id 149.222234
+2    batch   9.388036
+3 Residual  69.699999

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>速查表：36 张科研级 R 卡片 | bioR</title>
+<meta name="description" content="可复制、可打印的 R 速查表：基础语法、向量、NA、数据框、dplyr、tidyr、join、导入导出、here、ggplot2、geom、配色、导出、图形质检、Table 1、报告句型、Quarto、RStudio、数据字典、purrr、功效。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="cheatsheets">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 速查表</p>
+
+  <header class="special-hero">
+    <span class="kicker">CHEATSHEETS · 36 CARDS · 7 CATEGORIES</span>
+    <h1>速查表</h1>
+    <p class="lede">每张卡回答一个具体问题：动词怎么选、图怎么画、n 怎么报。表格可复制成制表符文本，代码可整段复制运行——贴在实验台旁边的那种。</p>
+    <div class="cover-meta">
+      <span>36 张已上线</span><span>7 大分类</span><span>表格 / 代码 / 条目 / 决策流</span><span>可打印</span>
+    </div>
+  </header>
+
+  <div class="filter-bar" role="search" aria-label="筛选速查表">
+    <div class="filter-chips">
+      <button type="button" class="filter-chip active" data-cat="">全部</button>
+      <button type="button" class="filter-chip" data-cat="基础语法">基础语法</button>
+      <button type="button" class="filter-chip" data-cat="数据处理">数据处理</button>
+      <button type="button" class="filter-chip" data-cat="导入与路径">导入与路径</button>
+      <button type="button" class="filter-chip" data-cat="可视化">可视化</button>
+      <button type="button" class="filter-chip" data-cat="统计建模">统计建模</button>
+      <button type="button" class="filter-chip" data-cat="科研工具">科研工具</button>
+      <button type="button" class="filter-chip" data-cat="生物信息">生物信息</button>
+      <button type="button" class="filter-chip" id="cheat-research">只看 RESEARCH TOOL</button>
+    </div>
+    <div class="filter-search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="cheat-q" type="search" placeholder="搜索函数 / 场景 / 关键词…" aria-label="搜索速查表">
+    </div>
+    <div class="filter-actions">
+      <button type="button" class="btn" id="cheat-reset">重置</button>
+    </div>
+  </div>
+
+  <p class="small muted" id="cheat-count">36 / 36 张速查表</p>
+
+  <h2 class="sr-only">速查卡列表</h2>
+
+  <!-- 兼容旧链接：cheatsheets.html#import -->
+  <span id="import" class="cheat-anchor" aria-hidden="true"></span>
+
+  <div class="cheat-grid" id="cheat-grid">
+    <!-- CHEAT_CARDS_START -->
+<article class="cheat-card" id="r-syntax" data-cat="基础语法" data-research="0">
+  <div class="cc-head"><span class="tag">基础语法</span><span class="tag blue">表格</span>
+    <h3>R 基础语法与运算符</h3>
+    <p class="cc-desc">赋值、算术、比较、逻辑、管道与常用常量——一页查完。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">写法</th><th scope="col">例子</th><th scope="col">说明</th></tr></thead><tbody><tr><td>&lt;-</td><td>x &lt;- 3</td><td>赋值（推荐）；= 只在函数参数里用</td></tr><tr><td>+ - * / ^</td><td>2^3</td><td>算术；^ 是乘方</td></tr><tr><td>%% %/%</td><td>7 %% 3</td><td>余数 / 整除</td></tr><tr><td>== != &lt; &lt;=</td><td>x == 3</td><td>比较，返回 TRUE/FALSE</td></tr><tr><td>&amp; | !</td><td>x &gt; 1 &amp; x &lt; 5</td><td>逻辑与 / 或 / 非</td></tr><tr><td>%in%</td><td>x %in% c(1, 3)</td><td>成员判断，比多个 == 更清楚</td></tr><tr><td>|&gt;</td><td>x |&gt; sqrt()</td><td>原生管道（R ≥ 4.1）；%&gt;% 需要 magrittr</td></tr><tr><td>c()</td><td>c(1, 2, 3)</td><td>创建向量</td></tr><tr><td>seq() / :</td><td>seq(1, 10, by = 2)</td><td>等差数列</td></tr><tr><td>rep()</td><td>rep(c("a", "b"), times = 2)</td><td>重复</td></tr><tr><td>NA / NULL</td><td>NA</td><td>缺失值 / 空对象（长度 0）</td></tr><tr><td>TRUE / FALSE</td><td>TRUE</td><td>逻辑常量；别用 T/F（可被覆盖）</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>赋值用 &lt;-；= 留给函数参数。</li><li>逻辑值写全 TRUE/FALSE。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="r-syntax">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch01-setup.html">CH01</a><a href="chapters/ch02-vectors.html">CH02</a></span>
+    <span class="cc-tip">把一段分析写成脚本再跑，不要在控制台里手敲一长串。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="vectors-index" data-cat="基础语法" data-research="0">
+  <div class="cc-head"><span class="tag">基础语法</span><span class="tag blue">表格</span>
+    <h3>向量与索引</h3>
+    <p class="cc-desc">c()、类型、[] 三种索引、命名与回收——向量是 R 的地基。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">操作</th><th scope="col">写法</th><th scope="col">结果</th></tr></thead><tbody><tr><td>创建</td><td>hb &lt;- c(155.6, 157.8, NA)</td><td>dbl 向量，含 1 个 NA</td></tr><tr><td>类型</td><td>typeof(hb)</td><td>"double"</td></tr><tr><td>长度</td><td>length(hb)</td><td>3</td></tr><tr><td>按位置</td><td>hb[1]</td><td>155.6</td></tr><tr><td>负索引</td><td>hb[-1]</td><td>去掉第 1 个</td></tr><tr><td>逻辑索引</td><td>hb[hb &gt; 150]</td><td>只保留满足条件的元素（NA 会被丢掉）</td></tr><tr><td>命名</td><td>names(hb) &lt;- c("a", "b", "c")</td><td>之后可用 hb["b"]</td></tr><tr><td>缺失判定</td><td>is.na(hb)</td><td>TRUE/FALSE 向量</td></tr><tr><td>回收</td><td>c(1, 2, 3) + c(10, 20)</td><td>短向量循环补足——警告信号</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>NA 参与比较 → 结果也是 NA；过滤时先用 !is.na()。</li><li>负索引与逻辑索引不能混用。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="vectors-index">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch02-vectors.html">CH02</a></span>
+    <span class="cc-tip">索引前先 length()/is.na() 看一眼，别猜。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="na-types" data-cat="基础语法" data-research="0">
+  <div class="cc-head"><span class="tag">基础语法</span><span class="tag blue">表格</span>
+    <h3>缺失值、类型与强制转换</h3>
+    <p class="cc-desc">NA/NaN/NULL 的区别、is.na 家族、转换阶梯与因子。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">概念</th><th scope="col">判定</th><th scope="col">要点</th></tr></thead><tbody><tr><td>NA</td><td>is.na(x)</td><td>缺失值，有类型（NA_real_ 等）</td></tr><tr><td>NaN</td><td>is.nan(x)</td><td>非数（0/0），is.na(NaN) 也是 TRUE</td></tr><tr><td>NULL</td><td>is.null(x)</td><td>空对象，长度 0，不是缺失值</td></tr><tr><td>字符 → 数值</td><td>as.numeric("12.5")</td><td>失败变 NA 并警告：先查脏字符</td></tr><tr><td>数值 → 字符</td><td>as.character(12.5)</td><td>总是成功</td></tr><tr><td>逻辑 → 数值</td><td>as.numeric(TRUE)</td><td>1 / 0</td></tr><tr><td>因子</td><td>factor(x, levels = ...)</td><td>水平有顺序；有序用 ordered = TRUE</td></tr><tr><td>字符串转因子</td><td>factor(c("low", "high"))</td><td>水平默认按字母序——要手动指定</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>sum(is.na(x)) 数缺失；mean(x, na.rm = TRUE) 才会跳过 NA。</li><li>不要把缺失写成 0——0 是测量值。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="na-types">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch02-vectors.html">CH02</a><a href="chapters/ch04-import-qc.html">CH04</a></span>
+    <span class="cc-tip">拿到数据先 sum(is.na()) 逐列过一遍。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="data-frames-tibble" data-cat="基础语法" data-research="0">
+  <div class="cc-head"><span class="tag">基础语法</span><span class="tag blue">表格</span>
+    <h3>数据框与 tibble</h3>
+    <p class="cc-desc">行列索引、$、glimpse 与 tidy 三原则。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">操作</th><th scope="col">写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>维度</td><td>dim(pika)</td><td>行 × 列</td></tr><tr><td>列名</td><td>names(pika) / colnames(pika)</td><td>逐列核对</td></tr><tr><td>取一列</td><td>pika$body_mass_g / pika[["body_mass_g"]]</td><td>$ 返回向量</td></tr><tr><td>取一行</td><td>pika[1, ]</td><td>逗号前是行</td></tr><tr><td>取一格</td><td>pika[1, "body_mass_g"]</td><td>行 + 列</td></tr><tr><td>转置查看</td><td>glimpse(pika)</td><td>类型 + 样本值</td></tr><tr><td>base 对照</td><td>str(pika)</td><td>结构</td></tr><tr><td>ID 唯一</td><td>anyDuplicated(pika$id)</td><td>0 = 无重复</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>tidy：一行一个观测、一列一个变量、一表一个分析单位。</li><li>tibble 打印只显示前 10 行。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="data-frames-tibble">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch03-data-frames.html">CH03</a></span>
+    <span class="cc-tip">读入后先 glimpse()，再谈分析。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="dplyr-verbs" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>dplyr 动词</h3>
+    <p class="cc-desc">一行一个动作，用管道串起来。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">动词</th><th scope="col">作用</th><th scope="col">科研场景</th></tr></thead><tbody><tr><td>filter()</td><td>按条件保留行</td><td>排除缺失血红蛋白</td></tr><tr><td>select()</td><td>选列 / 改名</td><td>只留 id、体重、血红蛋白</td></tr><tr><td>mutate()</td><td>新建或改写列</td><td>派生 mass_class</td></tr><tr><td>arrange()</td><td>排序</td><td>按体重降序看最大个体</td></tr><tr><td>group_by()</td><td>划组</td><td>按海拔 × 性别</td></tr><tr><td>summarise()</td><td>每组压成一行</td><td>n、mean、sd、median</td></tr><tr><td>count()</td><td>计数</td><td>每个分级的例数</td></tr><tr><td>distinct()</td><td>去重</td><td>ID 唯一性检查</td></tr><tr><td>case_when()</td><td>多分支条件</td><td>体重分级（从上到下命中）</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>summarise() 后加 .groups = "drop" 或 ungroup()。</li><li>n() 数行（含 NA 行）；有效观测数用 sum(!is.na(x))。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="dplyr-verbs">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch06-wrangling.html">CH06</a></span>
+    <span class="cc-tip">先 filter 再 mutate，能减少计算量。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="tidyr-reshape" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>tidyr 宽长转换</h3>
+    <p class="cc-desc">pivot_longer / pivot_wider / separate / unite。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">函数</th><th scope="col">方向</th><th scope="col">例子</th></tr></thead><tbody><tr><td>pivot_longer()</td><td>宽 → 长</td><td>mass_T0/T14/T28 → 一列 timepoint + 一列 mass</td></tr><tr><td>pivot_wider()</td><td>长 → 宽</td><td>每个时间点一列（慎用于重复测量）</td></tr><tr><td>separate()</td><td>拆列</td><td>well = "A01" → row + col</td></tr><tr><td>unite()</td><td>合列</td><td>batch + id → 唯一键</td></tr><tr><td>separate_wider_delim()</td><td>新版拆列</td><td>按分隔符拆分并保留类型</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>长表是 ggplot 的默认形状；宽表适合展示。</li><li>转换前先想清楚：谁是观测单位？</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="tidyr-reshape">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch07-reshape-joins.html">CH07</a></span>
+    <span class="cc-tip">同一张表既长又宽时，以分析所需形状为准。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="joins" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>多表连接</h3>
+    <p class="cc-desc">四种 join、键清洗与行数对账。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">函数</th><th scope="col">保留</th><th scope="col">用途</th></tr></thead><tbody><tr><td>left_join(x, y)</td><td>x 的全部行</td><td>给样本表补分组信息</td></tr><tr><td>inner_join(x, y)</td><td>两边都匹配的行</td><td>只分析 12/12 匹配的样本</td></tr><tr><td>full_join(x, y)</td><td>并集</td><td>盘点缺失匹配</td></tr><tr><td>anti_join(x, y)</td><td>x 中不匹配的行</td><td>找出对不上的样本 ID（QC）</td></tr><tr><td>semi_join(x, y)</td><td>x 中匹配的行（不加列）</td><td>过滤出有元数据的样本</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>连接前先清洗键（str_trim、大小写、"H-5" 这类命名）。</li><li>连接后核对行数：左表 12 行 → 结果仍应是 12 行。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="joins">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch07-reshape-joins.html">CH07</a></span>
+    <span class="cc-tip">anti_join 是连接 QC 的主力：先看丢没丢，再决定 join。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="purrr" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>purrr 与 apply 家族</h3>
+    <p class="cc-desc">map / map_dfr / map2 / walk、匿名函数与错误捕获。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">函数</th><th scope="col">输入</th><th scope="col">输出</th></tr></thead><tbody><tr><td>map(x, f)</td><td>一个向量/列表</td><td>列表</td></tr><tr><td>map_dbl / map_chr</td><td>一个向量</td><td>原子向量（类型固定）</td></tr><tr><td>map_dfr(x, f)</td><td>一个向量</td><td>按行拼接的数据框</td></tr><tr><td>map2_dfr(x, y, f)</td><td>两个等长输入</td><td>按行拼接（并行迭代）</td></tr><tr><td>pmap_dfr(list(...), f)</td><td>多个输入</td><td>同上</td></tr><tr><td>walk(x, f)</td><td>一个向量</td><td>无返回值（副作用，如写文件）</td></tr><tr><td>possibly(f, otherwise)</td><td>函数</td><td>出错时返回默认值</td></tr><tr><td>safely(f)</td><td>函数</td><td>返回 result + error 两个元素</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>一个输入用 map，两个用 map2；参数顺序与函数签名一致。</li><li>批量写文件用 walk，不要用 map。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="purrr">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch05-functions.html">CH05</a></span>
+    <span class="cc-tip">先写单文件函数并测通，再套 map。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="stringr-regex" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>stringr 与正则</h3>
+    <p class="cc-desc">检测、替换、提取、大小写与空白清理；正则字符类速查。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>检测</td><td>str_detect(x, "^H-")</td><td>返回 TRUE/FALSE</td></tr><tr><td>替换</td><td>str_replace_all(x, "-", "")</td><td>全部替换；replace 只换第一个</td></tr><tr><td>提取</td><td>str_extract(x, "[A-Z]\\d+")</td><td>第一个匹配；extract_all 取全部</td></tr><tr><td>大小写</td><td>str_to_lower(x) / str_to_upper(x)</td><td>统一 ID 大小写</td></tr><tr><td>空白</td><td>str_squish(x)</td><td>去首尾空白并合并中间空白</td></tr><tr><td>正则类</td><td>^ $ \\d \\s [A-Z] {2,}</td><td>锚点、数字、空白、字符集、量词</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>在 R 字符串里写正则，反斜杠要双写：\\d 表示数字。</li><li>先 str_squish 再匹配，能避免前导空格导致的假不匹配。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="stringr-regex">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch06-wrangling.html">CH06</a><a href="chapters/ch07-reshape-joins.html">CH07</a></span>
+    <span class="cc-tip">清洗 ID 时先看 unique()，再写规则；不要拿一个样本试。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="forcats" data-cat="数据处理" data-research="0">
+  <div class="cc-head"><span class="tag">数据处理</span><span class="tag blue">表格</span>
+    <h3>forcats 因子</h3>
+    <p class="cc-desc">水平重排、合并、其他水平与有序因子；让图和模型顺序可控。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">函数</th><th scope="col">说明</th></tr></thead><tbody><tr><td>指定顺序</td><td>fct_relevel(f, "low", "mid")</td><td>图与模型按此顺序</td></tr><tr><td>按数值排序</td><td>fct_reorder(f, x)</td><td>常用于条形图排序</td></tr><tr><td>合并稀有水平</td><td>fct_lump(f, n = 3)</td><td>保留最常见的 3 个</td></tr><tr><td>重命名</td><td>fct_recode(f, Female = "F")</td><td>水平值改名</td></tr><tr><td>删空水平</td><td>fct_drop(f)</td><td>子集后清理</td></tr><tr><td>有序因子</td><td>factor(x, ordered = TRUE)</td><td>有序模型用</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>水平顺序会改变模型截距与图例，不是纯审美。</li><li>合并水平前先 table()，确认没有生物学上不同的组被并掉。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="forcats">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch06-wrangling.html">CH06</a><a href="chapters/ch08-ggplot2.html">CH08</a></span>
+    <span class="cc-tip">先定水平，再画图/建模；顺序写进脚本。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="import-export" data-cat="导入与路径" data-research="0">
+  <div class="cc-head"><span class="tag">导入与路径</span><span class="tag blue">表格</span>
+    <h3>导入导出</h3>
+    <p class="cc-desc">read_csv / read_excel / write_csv / writexl 与常见参数。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">函数</th><th scope="col">用途</th><th scope="col">关键参数</th></tr></thead><tbody><tr><td>read_csv()</td><td>读 CSV</td><td>skip（跳过注释行）、trim_ws、col_types</td></tr><tr><td>read_tsv()</td><td>读 TSV</td><td>同上</td></tr><tr><td>read_excel()</td><td>读 Excel</td><td>sheet、skip、na</td></tr><tr><td>excel_sheets()</td><td>列 sheet 名</td><td>导入前先看有几张表</td></tr><tr><td>write_csv()</td><td>写 CSV</td><td>默认 UTF-8、无行名</td></tr><tr><td>write_xlsx()</td><td>写 Excel</td><td>list 多 sheet</td></tr><tr><td>read_rds() / write_rds()</td><td>R 原生对象</td><td>保留类型与因子水平</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>仪器导出常有前导注释行——先 read_lines() 看头部。</li><li>CSV 不保留因子水平；需要时用 RDS。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="import-export">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch04-import-qc.html">CH04</a></span>
+    <span class="cc-tip">导入后立刻 dim() + names() 对照源文件。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="here-paths" data-cat="导入与路径" data-research="0">
+  <div class="cc-head"><span class="tag">导入与路径</span><span class="tag blue">表格</span>
+    <h3>项目路径与 here</h3>
+    <p class="cc-desc">项目根、相对路径与 here()——脚本换电脑也能跑。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>here::here("assets/data/x.csv")</td><td>从项目根出发的路径</td></tr><tr><td>here() 在 RStudio / Rscript 中都可定位</td><td>以 .here 文件或项目根为锚</td></tr><tr><td>setwd() 不写进脚本</td><td>换机器即失效</td></tr><tr><td>绝对路径不写进脚本</td><td>Windows 盘符、用户名都会变</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>项目根 = 含 .Rproj 或 .here 标记的目录。</li><li>文件名统一小写 + 下划线。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="here-paths">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch01-setup.html">CH01</a></span>
+    <span class="cc-tip">脚本第一行就 library(here)，之后所有路径都从这里出发。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="ggplot2-grammar" data-cat="可视化" data-research="0">
+  <div class="cc-head"><span class="tag">可视化</span><span class="tag blue">表格</span>
+    <h3>ggplot2 语法</h3>
+    <p class="cc-desc">data / aes / geom / stat / scale / facet / theme 七件套。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">部件</th><th scope="col">作用</th><th scope="col">例子</th></tr></thead><tbody><tr><td>data</td><td>画什么数据</td><td>ggplot(pika)</td></tr><tr><td>aes()</td><td>列到视觉通道的映射</td><td>aes(x = altitude_group, y = body_mass_g)</td></tr><tr><td>geom_*()</td><td>几何对象</td><td>geom_boxplot()</td></tr><tr><td>stat_*()</td><td>统计变换</td><td>stat_summary(fun = mean)</td></tr><tr><td>scale_*()</td><td>标度与图例</td><td>scale_y_continuous()</td></tr><tr><td>facet_*()</td><td>分面</td><td>facet_wrap(~ sex)</td></tr><tr><td>theme_*()</td><td>主题</td><td>theme_bio()</td></tr><tr><td>labs()</td><td>标题与轴标签</td><td>labs(x = "海拔组", y = "体重 (g)")</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>映射写在 aes() 里；固定样式写在 aes() 外。</li><li>每个图都要有单位与 n。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="ggplot2-grammar">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch08-ggplot2.html">CH08</a><a href="chapters/ch09-publication.html">CH09</a></span>
+    <span class="cc-tip">+ 换行时把 + 放在行尾。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="geom-choice" data-cat="可视化" data-research="0">
+  <div class="cc-head"><span class="tag">可视化</span><span class="tag blue">决策流</span>
+    <h3>geom 选择</h3>
+    <p class="cc-desc">按数据类型与问题选图：分布 / 比较 / 关系 / 组成 / 趋势。</p>
+  </div>
+  <div class="cc-body"><ol class="small" style="margin:0 0 10px;padding-left:20px"><li>问 1：看一个变量的分布 → 直方图 / 密度 / 条带图。</li><li>问 2：比较组间同一变量 → 箱线图 + 散点（小 n）。</li><li>问 3：看两变量关系 → 散点图（+ 平滑线）。</li><li>问 4：看随时间变化 → 折线图（按个体分组）。</li><li>问 5：看组成 → 堆叠柱（慎用饼图）。</li></ol><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">问题</th><th scope="col">首选 geom</th><th scope="col">注意</th></tr></thead><tbody><tr><td>分布（连续）</td><td>geom_histogram / geom_density</td><td>组距要写进图注</td></tr><tr><td>分布（小 n）</td><td>geom_jitter / geom_strip</td><td>叠加原始点，别只画均值</td></tr><tr><td>组间比较</td><td>geom_boxplot / geom_violin</td><td>箱线图要标 n</td></tr><tr><td>组间均值 + 误差</td><td>stat_summary(fun.data = mean_sdl)</td><td>写清误差是 SD 还是 SE</td></tr><tr><td>两变量关系</td><td>geom_point + geom_smooth</td><td>method 与公式写进图注</td></tr><tr><td>时间趋势</td><td>geom_line(group = id)</td><td>个体不要连成锯齿</td></tr><tr><td>计数</td><td>geom_col</td><td>先 count() 再画</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>小 n（&lt; 10/组）优先散点 + 中位数线。</li><li>禁止 3D 饼图与双 Y 轴。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="geom-choice">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch08-ggplot2.html">CH08</a><a href="chapters/ch09-publication.html">CH09</a></span>
+    <span class="cc-tip">图类型由数据类型决定，不由审美决定。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="scales-colour" data-cat="可视化" data-research="0">
+  <div class="cc-head"><span class="tag">可视化</span><span class="tag blue">表格</span>
+    <h3>标度、配色与色盲安全</h3>
+    <p class="cc-desc">Okabe–Ito、viridis、发散色与图例设置。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">场景</th><th scope="col">推荐</th><th scope="col">避免</th></tr></thead><tbody><tr><td>分类（≤ 8 组）</td><td>Okabe–Ito 色板</td><td>彩虹色 / 红绿对比</td></tr><tr><td>连续（单方向）</td><td>viridis / cividis</td><td>jet / 彩虹</td></tr><tr><td>发散（± 值）</td><td>蓝–白–红（色盲安全变体）</td><td>红–绿发散</td></tr><tr><td>有序因子</td><td>同色系深浅</td><td>无序随机色</td></tr><tr><td>灰度打印</td><td>形状 + 线型区分组</td><td>只靠颜色</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>图例标题写变量名与单位。</li><li>组数 &gt; 8 时改用分面，而不是继续加颜色。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="scales-colour">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch08-ggplot2.html">CH08</a></span>
+    <span class="cc-tip">打印成黑白看一眼：还能区分组吗？</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="theme-export" data-cat="可视化" data-research="0">
+  <div class="cc-head"><span class="tag">可视化</span><span class="tag blue">表格</span>
+    <h3>主题、拼图与期刊导出</h3>
+    <p class="cc-desc">theme()、patchwork、ggsave 与尺寸/字体/格式。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">函数</th><th scope="col">用途</th></tr></thead><tbody><tr><td>theme_bio(base_size)</td><td>本项目统一主题</td></tr><tr><td>theme(legend.position = ...)</td><td>图例位置</td></tr><tr><td>patchwork: p1 | p2 / p1 / p2</td><td>并排 / 上下拼图</td></tr><tr><td>plot_layout(guides = "collect")</td><td>合并图例</td></tr><tr><td>ggsave(path, width, height, dpi)</td><td>导出；尺寸用 mm 更贴近期刊</td></tr><tr><td>svglite::svglite()</td><td>矢量 SVG（文字可编辑）</td></tr><tr><td>cairo_pdf()</td><td>PDF 嵌入字体</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>单栏图约 89 mm，双栏约 183 mm。</li><li>导出后打开检查字体与字号。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="theme-export">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch08-ggplot2.html">CH08</a><a href="chapters/ch09-publication.html">CH09</a></span>
+    <span class="cc-tip">图先定尺寸，再调字号——反了会返工。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="figure-qc" data-cat="可视化" data-research="1">
+  <div class="cc-head"><span class="tag">可视化</span><span class="tag blue">决策流</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>图形质检清单</h3>
+    <p class="cc-desc">投稿前逐项检查：n、单位、误差线、统计标注、可读性。</p>
+  </div>
+  <div class="cc-body"><ol class="small" style="margin:0 0 10px;padding-left:20px"><li>1. n：每个组标出样本量（或图注写明）。</li><li>2. 单位：两个轴都有单位；图例说明变量。</li><li>3. 误差：写清 SD / SE / 95% CI，并在图注说明。</li><li>4. 统计：检验名、p 值或效应量写在图注，不写在图上。</li><li>5. 可读：字号 ≥ 7 pt（终稿尺寸）；色盲安全；黑白可辨。</li><li>6. 一致性：所有图的主题、字号、配色统一。</li></ol><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">检查项</th><th scope="col">不合格示例</th><th scope="col">修正</th></tr></thead><tbody><tr><td>n</td><td>只有均值柱，没有 n</td><td>加 n 或图注写 n/组</td></tr><tr><td>误差线</td><td>标了误差但没说是 SD 还是 SE</td><td>图注写明</td></tr><tr><td>统计</td><td>图上只写 * 不写检验</td><td>图注写检验与 p</td></tr><tr><td>坐标</td><td>Y 轴截断夸大差异</td><td>柱状图从 0 开始</td></tr><tr><td>颜色</td><td>红绿分组</td><td>换 Okabe–Ito + 形状</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>图注 = 图的自解释说明书：n、统计、误差、软件版本。</li><li>投稿前把图缩到终稿尺寸再看一遍。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="figure-qc">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch08-ggplot2.html">CH08</a><a href="chapters/ch09-publication.html">CH09</a><a href="chapters/ch14-reproducible.html">CH14</a></span>
+    <span class="cc-tip">质检清单逐项打勾，别凭感觉「看起来不错」。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="table1" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>描述统计与 Table 1</h3>
+    <p class="cc-desc">mean/SD、median(IQR)、n、缺失与分组汇总。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">统计量</th><th scope="col">R 写法</th><th scope="col">何时用</th></tr></thead><tbody><tr><td>n</td><td>n() / sum(!is.na(x))</td><td>每组有效观测数</td></tr><tr><td>均值 ± SD</td><td>mean(x); sd(x)</td><td>近似正态</td></tr><tr><td>中位数 (IQR)</td><td>median(x); quantile(x, c(.25, .75))</td><td>偏态 / 有离群值</td></tr><tr><td>计数 (%)</td><td>count(); mutate(pct = n / sum(n))</td><td>分类变量</td></tr><tr><td>缺失</td><td>sum(is.na(x))</td><td>每个变量都要报</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>排除规则先于统计，并留下 exclusions 日志。</li><li>SD 与 SE 不能混写；Table 1 用 SD。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="table1">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch06-wrangling.html">CH06</a></span>
+    <span class="cc-tip">Table 1 的每一格都能追溯到脚本里的一行。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="test-choice" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">决策流</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>统计检验选择</h3>
+    <p class="cc-desc">结局类型 × 设计 × 前提 → 检验与 R 函数；一页对齐统计导航。</p>
+  </div>
+  <div class="cc-body"><ol class="small" style="margin:0 0 10px;padding-left:20px"><li>1. 结局是什么：连续、二分类、有序、计数、时间到事件？</li><li>2. 几组、独立还是配对？组数 ≥ 3 先整体检验。</li><li>3. 前提：分布形状、方差齐性、独立性；不满足就换非参数或建模。</li><li>4. 报告：效应量 + 95% CI；多重比较要校正。</li></ol><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">设计</th><th scope="col">结局</th><th scope="col">推荐检验</th><th scope="col">R 函数</th></tr></thead><tbody><tr><td>两组独立</td><td>连续</td><td>Welch t</td><td>t.test(y ~ g)</td></tr><tr><td>两组配对</td><td>连续</td><td>配对 t</td><td>t.test(x, y, paired = TRUE)</td></tr><tr><td>三组以上</td><td>连续</td><td>ANOVA + 事后</td><td>aov(); TukeyHSD()</td></tr><tr><td>偏态/有序</td><td>连续/有序</td><td>Wilcoxon / Kruskal</td><td>wilcox.test(); kruskal.test()</td></tr><tr><td>两组/多组</td><td>二分类</td><td>卡方 / Fisher</td><td>chisq.test(); fisher.test()</td></tr><tr><td>时间到事件</td><td>生存</td><td>log-rank / Cox</td><td>survdiff(); coxph()</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>三组两两 t 检验会抬高假阳性；先整体再事后。</li><li>配对设计不能用独立样本检验；n 是个体数。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="test-choice">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch11-two-group.html">CH11</a><a href="chapters/ch12-anova.html">CH12</a><a href="chapters/ch16-survival.html">CH16</a></span>
+    <span class="cc-tip">检验由设计与结局决定，不由 p 值决定。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="anova-posthoc" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>ANOVA 与事后比较</h3>
+    <p class="cc-desc">单/双因素、交互、Tukey/emmeans 与紧凑字母。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">步骤</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>单因素</td><td>aov(y ~ g, data = d)</td><td>整体 F 检验</td></tr><tr><td>双因素</td><td>aov(y ~ A * B, data = d)</td><td>先看交互 A:B</td></tr><tr><td>事后</td><td>TukeyHSD(m) / emmeans(m, ~ g)</td><td>校正两两比较</td></tr><tr><td>字母</td><td>multcomp::cld(emmeans(...), adjust = "tukey")</td><td>字母相同=无显著差</td></tr><tr><td>前提</td><td>car::leveneTest(); plot(m)</td><td>方差齐、残差近似正态</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>总体显著不等于某一对显著；Tukey 的 p 与 ANOVA 的 p 回答不同问题。</li><li>交互显著时不要只解释主效应；分层看简单效应。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="anova-posthoc">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch12-anova.html">CH12</a></span>
+    <span class="cc-tip">先整体、后事后、再字母；顺序不能反。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="regression-diagnostics" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>回归与诊断</h3>
+    <p class="cc-desc">lm/glm 的系数、CI、残差、QQ、杠杆与共线性；模型不对劲就别解释斜率。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">检查</th><th scope="col">R 写法</th><th scope="col">看什么</th></tr></thead><tbody><tr><td>拟合</td><td>lm(y ~ x, data = d)</td><td>系数、SE、R²</td></tr><tr><td>整表</td><td>broom::tidy(m, conf.int = TRUE)</td><td>estimate + CI</td></tr><tr><td>模型摘要</td><td>broom::glance(m)</td><td>R²、AIC、sigma</td></tr><tr><td>逐观测</td><td>broom::augment(m)</td><td>.fitted、.resid、.hat、.cooksd</td></tr><tr><td>残差图</td><td>plot(m, 1:2)</td><td>非线性、异方差</td></tr><tr><td>QQ</td><td>plot(m, 2)</td><td>正态性</td></tr><tr><td>共线</td><td>car::vif(m)</td><td>> 5–10 需处理</td></tr><tr><td>logistic</td><td>glm(y ~ x, family = binomial)</td><td>OR 与预测概率</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>残差有结构时，斜率再显著也不能直接解释。</li><li>logistic 的系数是 log-OR；exp() 后才是 OR。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="regression-diagnostics">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch13-regression.html">CH13</a></span>
+    <span class="cc-tip">先诊断、后解释；诊断图不进正文也要看。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="mixed-models" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>混合效应模型</h3>
+    <p class="cc-desc">lmer 随机截距/斜率、ICC、singular fit 与 emmeans。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">R 写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>随机截距</td><td>lmer(y ~ trt + (1 | id), data = d)</td><td>同一 id 的测量不独立</td></tr><tr><td>随机斜率</td><td>lmer(y ~ time + (time | id), data = d)</td><td>个体变化速率不同</td></tr><tr><td>方差</td><td>VarCorr(m)</td><td>随机效应与残差方差</td></tr><tr><td>ICC</td><td>performance::icc(m)</td><td>个体方差占比</td></tr><tr><td>p 值</td><td>lmerTest::lmer(...); summary(m)</td><td>Satterthwaite 自由度</td></tr><tr><td>事后</td><td>emmeans(m, ~ trt); pairs()</td><td>校正边际比较</td></tr><tr><td>奇异</td><td>isSingular(m)</td><td>方差估成 0，需简化</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>n 是独立个体数，不是行数。</li><li>随机效应组数太少（如 2 个批次）常 singular；不要静默忽略。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="mixed-models">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch15-mixed-models.html">CH15</a></span>
+    <span class="cc-tip">先画个体轨迹，再决定随机截距/斜率。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="survival" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>生存分析</h3>
+    <p class="cc-desc">Surv/survfit/coxph：删失、KM、HR 与 PH 假设。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">R 写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>生存对象</td><td>Surv(time, status)</td><td>status: 1 事件 / 0 删失</td></tr><tr><td>KM</td><td>survfit(Surv(...) ~ group)</td><td>曲线 + 中位生存</td></tr><tr><td>中位</td><td>summary(fit)$table</td><td>median 与 95% CI</td></tr><tr><td>log-rank</td><td>survdiff(Surv(...) ~ group)</td><td>整条曲线比较</td></tr><tr><td>Cox</td><td>coxph(Surv(...) ~ group)</td><td>HR + CI</td></tr><tr><td>PH</td><td>cox.zph(cox)</td><td>p 小=违背 PH</td></tr><tr><td>风险表</td><td>summary(fit, times = c(0,20,40,60))$n.risk</td><td>图下风险人数</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>删失必须保留；删掉会低估生存。</li><li>HR 是相对风险，不是绝对死亡率。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="survival">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch16-survival.html">CH16</a></span>
+    <span class="cc-tip">先看 KM 与风险表，再解释 HR。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="pca-cluster-heatmap" data-cat="统计建模" data-research="1">
+  <div class="cc-head"><span class="tag">统计建模</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>PCA、聚类与热图</h3>
+    <p class="cc-desc">logCPM → PCA → 方差 → 热图/聚类；先看结构与批次。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>变换</td><td>edgeR::cpm(y, log = TRUE)</td><td>counts 先归一化</td></tr><tr><td>PCA</td><td>prcomp(t(lcpm), scale. = TRUE)</td><td>行=样本</td></tr><tr><td>方差</td><td>100 * pca$sdev^2 / sum(...)</td><td>轴标签写比例</td></tr><tr><td>热图</td><td>pheatmap(z, annotation_col = ann)</td><td>按行 z-score</td></tr><tr><td>聚类</td><td>hclust(dist(t(lcpm)))</td><td>距离与方法要写</td></tr><tr><td>混杂</td><td>table(cluster, meta$batch)</td><td>聚类≠处理效应</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>原始 counts 做 PCA 会被高表达基因支配。</li><li>PC1 分开不等于处理有效；先看 group 与 batch 是否重合。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="pca-cluster-heatmap">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch17-multivariate.html">CH17</a></span>
+    <span class="cc-tip">PCA 图必须同时标设计变量（group + batch）。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="report-sentences" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>统计报告句型</h3>
+    <p class="cc-desc">Methods / Results 的英文模板：效应量、CI、p 值与软件版本。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">场景</th><th scope="col">句型</th></tr></thead><tbody><tr><td>描述</td><td>Values are reported as mean ± SD unless stated otherwise.</td></tr><tr><td>组间比较</td><td>Body mass was compared between altitude groups using one-way ANOVA; post-hoc comparisons used Tukey's HSD.</td></tr><tr><td>效应量</td><td>The difference was 12.4 g (95% CI 6.1–18.7), corresponding to Cohen's d = 0.62.</td></tr><tr><td>非显著</td><td>No evidence of a difference was found (F(2, 57) = 1.21, p = 0.31).</td></tr><tr><td>软件</td><td>Analyses were performed in R 4.5.2; figures were produced with ggplot2.</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>p 值不写「显著优于」，写「有/无证据表明差异」。</li><li>CI 与效应量优先于单独 p 值。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="report-sentences">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch14-reproducible.html">CH14</a><a href="chapters/ch16-survival.html">CH16</a></span>
+    <span class="cc-tip">Methods 写清检验与前提检查，Results 只报数字与方向。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="quarto" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>Quarto / R Markdown</h3>
+    <p class="cc-desc">chunk、inline、参数、render 与输出格式。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">写法</th><th scope="col">说明</th></tr></thead><tbody><tr><td>```{r}</td><td>代码 chunk 开始（Quarto 用 ```{r}）</td></tr><tr><td>#| label: fig-x</td><td>chunk 选项（Quarto 语法）</td></tr><tr><td>`r mean(x)`</td><td>行内计算</td></tr><tr><td>params:</td><td>参数化报告（YAML）</td></tr><tr><td>quarto render report.qmd</td><td>渲染为 HTML/PDF/Word</td></tr><tr><td>freeze: true</td><td>缓存计算结果</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>报告与脚本共用同一份 qc_functions.R——不要复制逻辑。</li><li>渲染前先清空环境重跑一次。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="quarto">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch14-reproducible.html">CH14</a></span>
+    <span class="cc-tip">先把分析写成脚本，再让报告 source() 它。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="rstudio-shortcuts" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>RStudio 快捷键</h3>
+    <p class="cc-desc">运行、补全、注释、重排、历史与面板——每天省下十分钟。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">操作</th><th scope="col">Windows / Linux</th><th scope="col">macOS</th></tr></thead><tbody><tr><td>运行当前行</td><td>Ctrl + Enter</td><td>Cmd + Return</td></tr><tr><td>运行整个脚本</td><td>Ctrl + Shift + Enter</td><td>Cmd + Shift + Return</td></tr><tr><td>补全</td><td>Tab / Ctrl + Space</td><td>Tab / Cmd + Space</td></tr><tr><td>注释/取消</td><td>Ctrl + Shift + C</td><td>Cmd + Shift + C</td></tr><tr><td>重排代码</td><td>Ctrl + Shift + A</td><td>Cmd + Shift + A</td></tr><tr><td>插入 &lt;-</td><td>Alt + -</td><td>Option + -</td></tr><tr><td>历史命令</td><td>↑ / Ctrl + ↑</td><td>↑ / Cmd + ↑</td></tr><tr><td>清空控制台</td><td>Ctrl + L</td><td>Ctrl + L</td></tr><tr><td>Knit / Render</td><td>Ctrl + Shift + K</td><td>Cmd + Shift + K</td></tr><tr><td>切换面板焦点</td><td>Ctrl + 1/2</td><td>Ctrl + 1/2</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>Ctrl+Shift+A 重排后再提交，diff 更干净。</li><li>Ctrl+1 回脚本、Ctrl+2 去控制台，形成肌肉记忆。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="rstudio-shortcuts">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch01-setup.html">CH01</a></span>
+    <span class="cc-tip">先练三个：运行行、注释、重排。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="data-dictionary" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">代码</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>数据字典模板</h3>
+    <p class="cc-desc">变量、类型、单位、缺失、范围与统计单位——一表建档。</p>
+  </div>
+  <div class="cc-body"><pre class="ex-code cc-code"><code class="r">dict &lt;- tribble(
+  ~variable,        ~type, ~unit,  ~missing, ~allowed_range, ~description,
+  "id",             "chr", "-",    0,        "P001-P060",    "individual id; one row = one individual",
+  "altitude_group", "fct", "-",    0,        "low&lt;mid&lt;high", "ordered altitude factor",
+  "sex",            "fct", "-",    0,        "F, M",         "sex",
+  "body_mass_g",    "dbl", "g",    0,        "110-240",      "body mass",
+  "hemoglobin_g_l", "dbl", "g/L",  2,        "100-260",      "hemoglobin; NA = hemolysis"
+)</code></pre></div>
+  <ul class="cc-notes"><li>missing 列必须与 sum(is.na()) 逐列对账。</li><li>description 写统计单位：一行 = 一个个体 / 一次测量。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="data-dictionary">复制代码</button>
+    <span class="cc-chapters"><a href="chapters/ch03-data-frames.html">CH03</a><a href="chapters/ch06-wrangling.html">CH06</a></span>
+    <span class="cc-tip">数据字典是数据卡的一部分：交付数据必须带字典。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="power" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">决策流</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>样本量与功效</h3>
+    <p class="cc-desc">pwr、效应量、α、power 与模拟——n 不是拍脑袋定的。</p>
+  </div>
+  <div class="cc-body"><ol class="small" style="margin:0 0 10px;padding-left:20px"><li>1. 明确结局与检验（t / ANOVA / 比例 / 生存）。</li><li>2. 定效应量：来自预实验、文献或最小临床意义差。</li><li>3. 定 α（0.05）与 power（0.8）。</li><li>4. 算 n；再算「给定 n 能检出多大效应」。</li><li>5. 敏感性分析：效应量减半时 n 需要多少？</li></ol><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">场景</th><th scope="col">函数</th><th scope="col">关键参数</th></tr></thead><tbody><tr><td>两组均值</td><td>pwr.t.test()</td><td>d、sig.level、power</td></tr><tr><td>多组均值</td><td>pwr.anova.test()</td><td>k、f、sig.level、power</td></tr><tr><td>两组比例</td><td>pwr.2p.test()</td><td>h、sig.level、power</td></tr><tr><td>相关</td><td>pwr.r.test()</td><td>r、sig.level、power</td></tr><tr><td>模拟法</td><td>replicate + 检验</td><td>自己造数据估检出率</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>功效分析必须在收数据前做。</li><li>观测到的 p 值不能反推功效（post-hoc power 是循环论证）。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="power">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch12-anova.html">CH12</a></span>
+    <span class="cc-tip">效应量写进预注册；n 由它推出，而不是先定 n 再找效应。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="renv" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>renv 与环境复现</h3>
+    <p class="cc-desc">init/snapshot/restore、lockfile 与缓存；让别人能装回同一套包。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">命令</th><th scope="col">说明</th></tr></thead><tbody><tr><td>初始化</td><td>renv::init()</td><td>项目本地库 + renv.lock</td></tr><tr><td>记录</td><td>renv::snapshot()</td><td>把当前包版本写进 lock</td></tr><tr><td>恢复</td><td>renv::restore()</td><td>按 lock 安装</td></tr><tr><td>状态</td><td>renv::status()</td><td>检查不一致</td></tr><tr><td>锁文件</td><td>renv.lock</td><td>提交到 Git</td></tr><tr><td>缓存</td><td>renv::paths$cache()</td><td>离线迁移可带缓存</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>lockfile 要提交；renv/ 的 library 不提交。</li><li>恢复时网络/镜像失败要先解决，不要跳过锁文件。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="renv">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch01-setup.html">CH01</a><a href="chapters/ch14-reproducible.html">CH14</a></span>
+    <span class="cc-tip">交付前跑 renv::status()，确认快照与当前库一致。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="git-basics" data-cat="科研工具" data-research="1">
+  <div class="cc-head"><span class="tag">科研工具</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>Git 最小命令</h3>
+    <p class="cc-desc">init/status/add/commit/diff/log 与 .gitignore；只记科研必需的八条。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">命令</th><th scope="col">说明</th></tr></thead><tbody><tr><td>初始化</td><td>git init</td><td>项目根建立仓库</td></tr><tr><td>状态</td><td>git status</td><td>已改/未跟踪</td></tr><tr><td>暂存</td><td>git add file.R</td><td>选择要提交的改动</td></tr><tr><td>提交</td><td>git commit -m "msg"</td><td>写清做了什么</td></tr><tr><td>差异</td><td>git diff</td><td>提交前检查</td></tr><tr><td>历史</td><td>git log --oneline</td><td>找回旧版本</td></tr><tr><td>远程</td><td>git remote add origin URL</td><td>绑定远端</td></tr><tr><td>忽略</td><td>.gitignore</td><td>排除临时/大文件</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>不要把原始数据/大文件塞进 Git；用 .gitignore + 数据说明。</li><li>提交粒度按一个完整改动，不按一天一次。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="git-basics">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch01-setup.html">CH01</a><a href="chapters/ch14-reproducible.html">CH14</a></span>
+    <span class="cc-tip">先 status/diff，再 add/commit；不要盲提交。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="deseq2" data-cat="生物信息" data-research="1">
+  <div class="cc-head"><span class="tag">生物信息</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>DESeq2 差异分析</h3>
+    <p class="cc-desc">counts、design、DESeq、results、lfcShrink、padj 与火山图。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">步骤</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>对象</td><td>DESeqDataSetFromMatrix(mat, meta, ~ group)</td><td>counts 必须整数</td></tr><tr><td>过滤</td><td>rowSums(counts(dds) >= 10) >= 6</td><td>低表达先删</td></tr><tr><td>建模</td><td>DESeq(dds)</td><td>负二项 GLM</td></tr><tr><td>结果</td><td>results(dds, contrast = c("group", "hypoxia", "control"))</td><td>log2FC + padj</td></tr><tr><td>收缩</td><td>lfcShrink(dds, coef = ..., type = "apeglm")</td><td>降低 LFC 噪声</td></tr><tr><td>筛选</td><td>padj < 0.05 & abs(log2FoldChange) > 1</td><td>双阈值</td></tr><tr><td>设计</td><td>~ group (+ batch 若可分离)</td><td>完全混杂不能加</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>用 padj 而不是 pvalue 选基因。</li><li>group 与 batch 完全重合时不能写 ~ batch + group；模型不满秩。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="deseq2">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch18-rnaseq.html">CH18</a></span>
+    <span class="cc-tip">先 table(group, batch)，再决定 design。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="enrichment" data-cat="生物信息" data-research="1">
+  <div class="cc-head"><span class="tag">生物信息</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>富集分析</h3>
+    <p class="cc-desc">ORA/GSEA、背景基因集、TERM2GENE、FDR 与气泡图。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>ORA</td><td>enricher(genes, TERM2GENE = t2g, universe = bg)</td><td>超几何检验</td></tr><tr><td>GSEA</td><td>GSEA(geneList, TERM2GENE = t2g)</td><td>按全基因排序</td></tr><tr><td>注释表</td><td>data.frame(term, gene)</td><td>第一列 term、第二列 gene</td></tr><tr><td>背景</td><td>universe = rownames(dds)</td><td>实际检测基因</td></tr><tr><td>校正</td><td>p.adjust(method = "BH")</td><td>报告 padj</td></tr><tr><td>图</td><td>enrichplot / ggplot 气泡</td><td>大小=基因数</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>背景错会让富集 p 虚高；注释版本必须与基因 ID 匹配。</li><li>没有显著通路就写「未发现」，不要解释 nominal p。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="enrichment">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch18-rnaseq.html">CH18</a></span>
+    <span class="cc-tip">富集是假设生成；先检查背景与 ID 映射率。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="seurat" data-cat="生物信息" data-research="1">
+  <div class="cc-head"><span class="tag">生物信息</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>单细胞 Seurat 最小流程</h3>
+    <p class="cc-desc">矩阵、QC、归一化、聚类、注释与 pseudobulk 差异。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">步骤</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>对象</td><td>CreateSeuratObject(counts, meta.data)</td><td>barcode 对齐</td></tr><tr><td>QC</td><td>subset(nFeature_RNA > 200 & percent.mt < 10)</td><td>阈值按样本</td></tr><tr><td>归一化</td><td>NormalizeData(); FindVariableFeatures()</td><td>记录参数</td></tr><tr><td>降维</td><td>ScaleData(); RunPCA(); RunUMAP()</td><td>HVG 数量</td></tr><tr><td>聚类</td><td>FindNeighbors(); FindClusters(resolution = .5)</td><td>分辨率敏感性</td></tr><tr><td>注释</td><td>FindAllMarkers() + 参考</td><td>多 marker 一致</td></tr><tr><td>差异</td><td>pseudobulk + DESeq2</td><td>细胞数不是 n</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>把细胞当重复会严重低估误差；条件比较用 pseudobulk 或混合模型。</li><li>整合不能抹掉真实处理效应；先看批次是否可分离。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="seurat">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch15-mixed-models.html">CH15</a><a href="chapters/ch17-multivariate.html">CH17</a></span>
+    <span class="cc-tip">先 QC 与设计，再聚类；cluster 名字不是生物学结论。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="phyloseq" data-cat="生物信息" data-research="1">
+  <div class="cc-head"><span class="tag">生物信息</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>微生物组 phyloseq</h3>
+    <p class="cc-desc">ASV 表、分类、元数据、α/β 多样性、PERMANOVA 与树。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">任务</th><th scope="col">R 写法</th><th scope="col">要点</th></tr></thead><tbody><tr><td>对象</td><td>phyloseq(otu_table, tax_table, sample_data)</td><td>样本名对齐</td></tr><tr><td>α 多样性</td><td>estimate_richness(ps, measures = "Shannon")</td><td>深度影响</td></tr><tr><td>β 多样性</td><td>distance(ps, method = "bray")</td><td>距离选择要写</td></tr><tr><td>排序</td><td>ordinate(ps, method = "PCoA", distance = "bray")</td><td>解释方差</td></tr><tr><td>检验</td><td>vegan::adonis2(distance ~ group, data = meta)</td><td>PERMANOVA</td></tr><tr><td>树</td><td>ggtree(phy_tree(ps))</td><td>支持度/根</td></tr><tr><td>差异</td><td>ANCOM-BC / MaAsLin2</td><td>组成性</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>采样设计决定上限；无阴性对照要说明。</li><li>组成数据不要直接 t 检验；零膨胀与组成性要处理。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="phyloseq">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch17-multivariate.html">CH17</a><a href="chapters/ch18-rnaseq.html">CH18</a></span>
+    <span class="cc-tip">先看深度与阴性对照，再做多样性/差异。</span>
+  </div>
+</article>
+
+<article class="cheat-card" id="bio-formats" data-cat="生物信息" data-research="1">
+  <div class="cc-head"><span class="tag">生物信息</span><span class="tag blue">表格</span><span class="tag green">RESEARCH TOOL</span>
+    <h3>生物数据库与文件格式</h3>
+    <p class="cc-desc">GEO/Ensembl/UniProt/KEGG 与 FASTA/FASTQ/GFF/BAM/VCF 读写坑。</p>
+  </div>
+  <div class="cc-body"><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">格式/来源</th><th scope="col">用途</th><th scope="col">R 入口</th><th scope="col">坑</th></tr></thead><tbody><tr><td>FASTA</td><td>序列</td><td>Biostrings::readDNAStringSet()</td><td>ID 与注释行</td></tr><tr><td>FASTQ</td><td>测序 reads</td><td>ShortRead::readFastq()</td><td>Phred 编码、压缩</td></tr><tr><td>GFF3</td><td>基因组注释</td><td>rtracklayer::import（GFF3）</td><td>1-based；版本匹配</td></tr><tr><td>BED</td><td>基因组区间</td><td>rtracklayer::import（BED）</td><td>0-based 半开</td></tr><tr><td>BAM</td><td>比对结果</td><td>Rsamtools::scanBam()</td><td>需索引；排序</td></tr><tr><td>VCF</td><td>变异</td><td>VariantAnnotation::readVCF()</td><td>build；多等位</td></tr><tr><td>Newick</td><td>树</td><td>ape::read.tree()</td><td>支持度/根</td></tr><tr><td>MTX</td><td>稀疏矩阵</td><td>Matrix::readMM()</td><td>gene×cell 方向</td></tr><tr><td>h5ad</td><td>AnnData</td><td>zellkonverter</td><td>Python/R 互转</td></tr><tr><td>CSV/TSV</td><td>通用表</td><td>readr::read_csv()</td><td>分隔符/类型/编码</td></tr></tbody></table></div></div>
+  <ul class="cc-notes"><li>GEO 下载前先读样本表与设计；不要自动抓取（许可/网络）。</li><li>参考基因组、注释与基因 ID 版本必须写进方法。</li></ul>
+  <div class="cc-foot">
+    <button type="button" class="btn" data-copy="bio-formats">复制表格</button>
+    <span class="cc-chapters"><a href="chapters/ch07-reshape-joins.html">CH07</a><a href="chapters/ch17-multivariate.html">CH17</a><a href="chapters/ch18-rnaseq.html">CH18</a></span>
+    <span class="cc-tip">格式坑九成在坐标系、版本与 ID；先核对再分析。</span>
+  </div>
+</article>
+<!-- CHEAT_CARDS_END -->
+  </div>
+
+  <div class="empty-state" id="cheat-empty" hidden>
+    <p>没有匹配的速查表——换个关键词，或点「重置」。</p>
+  </div>
+
+  <div class="stats">
+    <p><b>怎么用这些卡</b>：① 写脚本时先查卡，别背函数；② 复制代码后先在小数据上跑通再放进管线；③ 打印时浏览器会自动避免卡片跨页（表头随卡片保留）。</p>
+  </div>
+
+  <div class="repro">
+    <p>速查表与章节同源：每张卡的结论都能在对应章节找到完整解释与真实输出；两者冲突时以章节为准并提 issue。</p>
+  </div>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="index.html#route">研究路线</a>
+      <a class="btn" href="datasets.html">数据集标本馆</a>
+      <a class="btn" href="cheatsheets.html#figure-qc">图形质检清单</a>
+      <a class="btn" href="cheatsheets.html#power">样本量与功效</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/toc.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/cheatsheets.js"></script>
+</body>
+</html>

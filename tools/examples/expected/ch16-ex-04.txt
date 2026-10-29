@@ -1,0 +1,3 @@
+               term chisq df     p
+treatment treatment  0.02  1 0.881
+GLOBAL       GLOBAL  0.02  1 0.881

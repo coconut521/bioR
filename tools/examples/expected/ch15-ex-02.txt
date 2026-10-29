@@ -1,0 +1,4 @@
+          component variance
+1      id (between)  178.409
+2 residual (within)   69.700
+3               ICC    0.719

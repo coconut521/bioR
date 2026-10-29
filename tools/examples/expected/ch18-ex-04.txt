@@ -1,0 +1,5 @@
+                                  term ratio p_adjust
+1    ko00190 oxidative phosphorylation 12/72    0.821
+2 ko00010 glycolysis / gluconeogenesis 11/72    0.821
+3                    ko04145 phagosome 10/72    0.821
+4 ko04610 NF-kappa B signaling pathway  9/72    0.836

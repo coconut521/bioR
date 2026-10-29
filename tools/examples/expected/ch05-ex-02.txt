@@ -1,0 +1,6 @@
+# A tibble: 3 × 3
+  batch     n mean_hb
+  <chr> <int>   <dbl>
+1 B1        5    150.
+2 B2        5    162.
+3 B3        5    151.

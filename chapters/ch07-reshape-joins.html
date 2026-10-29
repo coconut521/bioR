@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 7 章 宽长转换与多表连接：当表达矩阵遇上样本表 | bioR</title>
+<meta name="description" content="用 pivot_longer 把 2000×12 counts 转长表，用 anti_join 找出 3 处 ID 不一致，清洗连接键后 12/12 匹配；含行数对账、多对多警告与 join_qc.csv。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch07" data-part="II">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 7 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 07 · RESHAPE &amp; JOINS</span><span>STAGE II · EXPLORE</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">07</div>
+          <div class="cover-copy">
+            <h1>宽长转换与多表连接：当表达矩阵遇上样本表</h1>
+            <p class="cover-lede">2000 个基因 × 12 个样本，加上一张 12 行的样本表——连接的键对不上，样本就悄悄消失。</p>
+            <p class="cover-question"><b>本章科研问题：</b>counts 列名 C1…H6 与样本表里的「H-5」「 C3」对不上时，样本是怎么丢的？</p>
+            <div class="cover-meta">
+              <span>90–120 MIN</span><span>前置 ch06</span><span>数据 pika_rnaseq_counts.csv · metadata_raw</span><span>交付 expr_long.csv · join_qc.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>pivot_longer()</code> 把 2000 × 12 的宽矩阵转成 24 000 × 4 的长表。</li>
+          <li>用 <code>anti_join()</code> 在连接<b>之前</b>找出不匹配的样本 ID。</li>
+          <li>用 <code>str_trim()</code> / <code>str_replace()</code> 清洗连接键（空格、连字符）。</li>
+          <li>用 <code>left_join()</code> 连接并用<b>行数对账</b>证明没有丢样本（12/12）。</li>
+          <li>认出多对多连接的警告，并知道它会让行数膨胀。</li>
+          <li>导出 <code>expr_long.csv</code> 与 <code>join_qc.csv</code>。</li>
+        </ul>
+        <p class="small muted">前置：第 6 章；数据：<code>pika_rnaseq_counts.csv</code>、<code>pika_rnaseq_metadata_raw.csv</code>；交付：<code>expr_long.csv</code>、<code>join_qc.csv</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>RNA-seq 分析的标准流程是：表达矩阵（宽表）→ 长表 → 连接样本信息 → 分组比较。这一步丢一个样本，n 就从 6 变成 5，后面的差异分析全跟着错。<b>连接不是家务事，是分析本身</b>——所以这一章的主角是 <code>anti_join()</code>：先看丢没丢，再决定连不连。</p>
+      </div>
+
+      <h2>1. 宽表与长表：计数矩阵的形状问题</h2>
+      <p>表达矩阵天然是<b>宽表</b>：列名是样本，行是基因。ggplot 与分组统计要的是<b>长表</b>：一行一次「基因 × 样本」观测。<code>pivot_longer()</code> 把样本列「收」进两列——<code>sample_id</code> 与 <code>count</code>。</p>
+
+      <article class="example-card" id="ch07-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：2000 × 12 矩阵转 24 000 行长表</h3>
+          <div class="ex-meta"><span class="tag">pivot_longer</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch07-ex-01"><code class="r">library(readr); library(dplyr); library(tidyr)
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"),
+                   show_col_types = FALSE)
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_raw.csv"),
+                 show_col_types = FALSE)
+dim(counts)
+dim(meta)
+expr_long &lt;- counts |&gt;
+  pivot_longer(cols = -c(gene_id, gene_name),
+               names_to = "sample_id", values_to = "count")
+dim(expr_long)
+head(expr_long, 3)</code></pre>
+        <div class="ex-output" data-output-for="ch07-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 2000   14
+[1] 12  5
+[1] 24000     4
+# A tibble: 3 × 4
+  gene_id gene_name sample_id count
+  &lt;chr&gt;   &lt;chr&gt;     &lt;chr&gt;     &lt;dbl&gt;
+1 G00001  Pk0001    C1           54
+2 G00001  Pk0001    C2          100
+3 G00001  Pk0001    C3          105</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 5–6 行</b>：矩阵 2000 × 14（gene_id、gene_name + 12 个样本列）；样本表 12 × 5。</li>
+            <li><b>第 7–9 行</b>：<code>cols = -c(gene_id, gene_name)</code> 收掉其余 12 列——2000 × 12 = 24 000 行，每行一个「基因 × 样本」的 count。</li>
+            <li><b>第 10–11 行</b>：长表前 3 行：同一基因、三个样本、三个 count。这是 ggplot 与 group_by 都能直接吃的形状。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>cols = -gene_id</code> 只排除一列 → <code>gene_name</code> 也被当成样本值「收」进 count，得到一个全是字符的假 count 列。收列前先想清楚：哪些列是<b>标识</b>，哪些列才是<b>样本</b>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "counts": "2000 × 14" }, "out": "", "note": "读入矩阵与样本表", "dataframe": null },
+          { "line": 7, "vars": { "expr_long": "24000 × 4" }, "out": "[1] 24000 4", "note": "pivot_longer 收 12 个样本列", "dataframe": {
+            "columns": [ { "name": "gene_id", "type": "chr" }, { "name": "gene_name", "type": "chr" }, { "name": "sample_id", "type": "chr" }, { "name": "count", "type": "dbl" } ],
+            "rows": [ ["G00001", "Pk0001", "C1", "54"], ["G00001", "Pk0001", "C2", "100"], ["G00001", "Pk0001", "C3", "105"] ], "highlight": [0], "note": "一行 = 一个基因 × 一个样本" } }
+        ] }</script>
+      </article>
+
+      <h2>2. 连接之前先对抗：anti_join 找不匹配</h2>
+      <p><code>anti_join(x, y)</code> 返回「在 x 里但不在 y 里」的行——它是连接 QC 的探照灯。先跑它，才知道直接 join 会丢什么。这里有一个隐蔽的坑：readr 默认<b>会替你把空格修掉</b>（<code>trim_ws = TRUE</code>），所以要用 <code>trim_ws = FALSE</code> 才能看到真实的脏数据。</p>
+
+      <article class="example-card" id="ch07-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：三个对不上的样本 ID</h3>
+          <div class="ex-meta"><span class="tag">anti_join</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch07-ex-02"><code class="r">library(readr); library(dplyr); library(tidyr)
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"),
+                   show_col_types = FALSE)
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_raw.csv"),
+                 show_col_types = FALSE, trim_ws = FALSE)
+anti_join(meta, tibble(sample_id = names(counts)[-(1:2)]), by = "sample_id")
+anti_join(tibble(sample_id = names(counts)[-(1:2)]), meta, by = "sample_id")</code></pre>
+        <div class="ex-output" data-output-for="ch07-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 5
+  sample_id group   batch  sex   library_size
+  &lt;chr&gt;     &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;        &lt;dbl&gt;
+1 " C3"     control batch1 F           645108
+2 "H-5"     hypoxia batch2 F           557799
+3 "H-6"     hypoxia batch2 M           575253
+# A tibble: 3 × 1
+  sample_id
+  &lt;chr&gt;    
+1 C3       
+# ... (2 more lines; full output: expected/ch07-ex-02.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 5–6 行</b>：两个方向各查一次——样本表里对不上矩阵的（<code>" C3"</code> 带前导空格、<code>H-5</code>、<code>H-6</code> 带连字符），以及矩阵里有、样本表没有的（<code>C3</code>、<code>H5</code>、<code>H6</code>）。</li>
+            <li><b>注意引号</b>：tibble 把 <code>" C3"</code> 用引号括起来，正是为了让你看见那个空格。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>直接 <code>left_join()</code> 然后看结果「好像也对」——那 3 个样本的 group 变成了 NA，后面的分组统计悄悄少 3 个样本。<b>连接前不 anti_join，等于蒙眼过马路。</b></p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "counts": "2000 × 14", "meta": "12 × 5" }, "out": "", "note": "读入（meta 保留空格：trim_ws = FALSE）", "dataframe": null },
+          { "line": 5, "vars": { "meta": "12 × 5" }, "out": "# A tibble: 3 × 5", "note": "样本表里 3 个对不上：\" C3\" / H-5 / H-6", "dataframe": {
+            "columns": [ { "name": "sample_id", "type": "chr" }, { "name": "group", "type": "chr" } ],
+            "rows": [ ["\" C3\"", "control"], ["H-5", "hypoxia"], ["H-6", "hypoxia"] ], "highlight": [0, 1, 2], "note": "引号暴露空格；连字符暴露命名不一致" } },
+          { "line": 6, "vars": { "meta": "12 × 5" }, "out": "C3 / H5 / H6", "note": "反方向：矩阵里这 3 列找不到样本信息", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 清洗连接键：trim 与替换</h2>
+      <p>找到问题就修键，而不是修 join 的参数：<code>str_trim()</code> 去首尾空格，<code>str_replace("^H-", "H")</code> 把 <code>H-5</code> 规范成 <code>H5</code>。清洗完再 <code>anti_join()</code> 一次——必须为空。</p>
+
+      <article class="example-card" id="ch07-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：清洗后 12/12 全部匹配</h3>
+          <div class="ex-meta"><span class="tag">str_trim · str_replace</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch07-ex-03"><code class="r">library(readr); library(dplyr); library(stringr)
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"),
+                   show_col_types = FALSE)
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_raw.csv"),
+                 show_col_types = FALSE, trim_ws = FALSE)
+meta_clean &lt;- meta |&gt;
+  mutate(sample_id = sample_id |&gt;
+           str_trim() |&gt;
+           str_replace("^H-", "H"))
+anti_join(meta_clean, tibble(sample_id = names(counts)[-(1:2)]), by = "sample_id")
+sum(meta_clean$sample_id %in% names(counts))</code></pre>
+        <div class="ex-output" data-output-for="ch07-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 0 × 5
+# ℹ 5 variables: sample_id &lt;chr&gt;, group &lt;chr&gt;, batch &lt;chr&gt;, sex &lt;chr&gt;,
+#   library_size &lt;dbl&gt;
+[1] 12</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 7–9 行</b>：管道式清洗：先 trim，再规范连字符。两条规则都写成代码，下批数据照跑。</li>
+            <li><b>第 10 行</b>：清洗后再 anti_join → 0 行（空 tibble）。这是「键已对齐」的机械证明。</li>
+            <li><b>第 11 行</b>：12/12 命中——所有样本都能拿到分组信息，可以进入 join。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>在 Excel 里手动改 12 个 ID——这次对了，下批 200 个样本还是错。<b>清洗规则进脚本</b>，并写进方法学（连字符不一致是常见的手工录入问题）。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "meta": "12 × 5" }, "out": "", "note": "读入并保留原样（trim_ws = FALSE）", "dataframe": null },
+          { "line": 7, "vars": { "meta_clean": "12 × 5" }, "out": "", "note": "两条清洗规则：去空格 + 规范 H-", "dataframe": null },
+          { "line": 11, "vars": { "meta_clean": "12 × 5" }, "out": "[1] 12", "note": "12/12 全部匹配", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>4. join 与行数对账：不丢样本</h2>
+      <p>连接本身只有一行代码。真正的功夫在连接之后的三条对账：长表行数不变、分组信息无 NA、反方向 anti_join 为空。左边 24 000 行，连接后还是 24 000 行——这才叫没丢。</p>
+
+      <article class="example-card" id="ch07-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：left_join + 三条对账</h3>
+          <div class="ex-meta"><span class="tag">left_join</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch07-ex-04"><code class="r">library(readr); library(dplyr); library(tidyr)
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"),
+                   show_col_types = FALSE)
+meta_clean &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                       show_col_types = FALSE)
+expr_long &lt;- counts |&gt;
+  pivot_longer(cols = -c(gene_id, gene_name),
+               names_to = "sample_id", values_to = "count")
+joined &lt;- expr_long |&gt;
+  left_join(meta_clean, by = "sample_id")
+dim(expr_long)
+dim(joined)
+sum(is.na(joined$group))
+anti_join(expr_long, meta_clean, by = "sample_id") |&gt; nrow()</code></pre>
+        <div class="ex-output" data-output-for="ch07-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 24000     4
+[1] 24000     8
+[1] 0
+[1] 0</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 10–11 行</b>：left_join 按 <code>sample_id</code> 补上 group/batch/sex/library_size——4 列变 8 列。</li>
+            <li><b>第 12–13 行</b>：行数对账：24 000 → 24 000。不变 = 没有丢、也没有膨胀。</li>
+            <li><b>第 14 行</b>：分组列 0 个 NA——没有任何样本「连上了但没信息」。</li>
+            <li><b>第 15 行</b>：反方向 anti_join = 0——矩阵里的每个样本都能在样本表找到。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>样本表里同一个 ID 出现两次（重复录入）→ 多对多连接，24 000 行可能变 24 001 行，而且<b>静默</b>。dplyr 会警告 <code>many-to-many relationship</code>，但脚本照跑。看到这条警告就停下，先<code>count(sample_id)</code> 查重。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "expr_long": "24000 × 4" }, "out": "", "note": "读入并转长表", "dataframe": null },
+          { "line": 10, "vars": { "joined": "24000 × 8" }, "out": "", "note": "left_join 补样本信息", "dataframe": null },
+          { "line": 13, "vars": { "joined": "24000 × 8" }, "out": "[1] 24000 8", "note": "行数不变：没丢也没膨胀", "dataframe": null },
+          { "line": 14, "vars": { "joined": "24000 × 8" }, "out": "[1] 0", "note": "分组信息零 NA", "dataframe": null },
+          { "line": 15, "vars": { "joined": "24000 × 8" }, "out": "[1] 0", "note": "反方向 anti_join 为空", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="dataframe">
+        <script type="application/json" class="explainer-data">{
+          "question": "连接键对不上时，行去哪里了？",
+          "frames": [
+            { "columns": [ { "name": "sample_id", "type": "chr" }, { "name": "group", "type": "chr" } ],
+              "rows": [ ["C1", "control"], ["␣C3", "control"], ["H-5", "hypoxia"], ["H-6", "hypoxia"] ],
+              "highlight": [1, 2, 3], "note": "样本表里 3 个键有脏字符：␣C3（前导空格）、H-5/H-6（连字符）——直接 join 它们匹配不上。" },
+            { "columns": [ { "name": "sample_id", "type": "chr" }, { "name": "count", "type": "dbl" }, { "name": "group", "type": "chr" } ],
+              "rows": [ ["C1", "54", "control"], ["C3", "105", "NA"], ["H5", "77", "NA"], ["H6", "34", "NA"] ],
+              "highlight": [1, 2, 3], "dupe": [1, 2, 3], "note": "直接 left_join：这 3 个样本的 group 变 NA——行还在，信息丢了；随后的分组统计会少 3 个样本。" },
+            { "columns": [ { "name": "sample_id", "type": "chr" }, { "name": "count", "type": "dbl" }, { "name": "group", "type": "chr" } ],
+              "rows": [ ["C1", "54", "control"], ["C3", "105", "control"], ["H5", "77", "hypoxia"], ["H6", "34", "hypoxia"] ],
+              "highlight": [], "note": "清洗键之后：12/12 全部连上，group 零 NA——这才是能进统计的表。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>5. 端到端：expr_long.csv 与 join_qc.csv</h2>
+      <p>把清洗、长表、连接、对账装成一条管线；两份交付物：分析用的长表，和一张<b>连接 QC 表</b>。QC 表进补充材料——它是「没丢样本」的书面证据。</p>
+
+      <article class="example-card" id="ch07-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：从原始文件到两份交付物</h3>
+          <div class="ex-meta"><span class="tag">端到端</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch07-ex-05"><code class="r">library(readr); library(dplyr); library(tidyr); library(stringr)
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"),
+                   show_col_types = FALSE)
+raw &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_raw.csv"),
+                show_col_types = FALSE, trim_ws = FALSE)
+dir.create(here::here("data"), showWarnings = FALSE)
+meta_clean &lt;- raw |&gt;
+  mutate(sample_id = sample_id |&gt; str_trim() |&gt; str_replace("^H-", "H"))
+expr_long &lt;- counts |&gt;
+  pivot_longer(cols = -c(gene_id, gene_name),
+               names_to = "sample_id", values_to = "count") |&gt;
+  left_join(meta_clean, by = "sample_id")
+write_csv(expr_long, here::here("data/expr_long.csv"))
+qc &lt;- tibble(
+  check = c("samples_in_sheet", "matched_samples", "unmatched_meta",
+            "unmatched_counts", "joined_rows"),
+  value = c(nrow(meta_clean),
+            sum(meta_clean$sample_id %in% names(counts)),
+            anti_join(meta_clean, tibble(sample_id = names(counts)[-(1:2)]), by = "sample_id") |&gt; nrow(),
+            anti_join(tibble(sample_id = names(counts)[-(1:2)]), meta_clean, by = "sample_id") |&gt; nrow(),
+            nrow(expr_long)))
+write_csv(qc, here::here("data/join_qc.csv"))
+qc</code></pre>
+        <div class="ex-output" data-output-for="ch07-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 5 × 2
+  check            value
+  &lt;chr&gt;            &lt;int&gt;
+1 samples_in_sheet    12
+2 matched_samples     12
+3 unmatched_meta       0
+4 unmatched_counts     0
+5 joined_rows      24000</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 8–10 行</b>：清洗规则内联在管线里——脚本即文档。</li>
+            <li><b>第 11–14 行</b>：长表 + 连接一步完成；<code>write_csv</code> 导出 24 000 行的 <code>expr_long.csv</code>。</li>
+            <li><b>第 15–22 行</b>：QC 表五项：样本表数、匹配数、两侧未匹配数、连接后行数。进论文补充材料。</li>
+            <li><b>输出</b>：12 / 12 / 0 / 0 / 24 000——五项全对，才有资格进入 ch17 的差异分析。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>QC 表只写「成功」两个字。要写数字：匹配 12/12、未匹配 0/0、行数 24 000。<b>可复核的 QC 才有意义。</b></p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "raw": "12 × 5" }, "out": "", "note": "读入（保留脏键）", "dataframe": null },
+          { "line": 14, "vars": { "expr_long": "24000 × 8" }, "out": "", "note": "长表 + 连接", "dataframe": null },
+          { "line": 15, "vars": { "expr_long": "24000 × 8" }, "out": "", "note": "导出 expr_long.csv", "dataframe": null },
+          { "line": 23, "vars": { "qc": "5 × 2" }, "out": "12 / 12 / 0 / 0 / 24000", "note": "五项 QC 全对", "dataframe": {
+            "columns": [ { "name": "check", "type": "chr" }, { "name": "value", "type": "int" } ],
+            "rows": [ ["samples_in_sheet", "12"], ["matched_samples", "12"], ["unmatched_meta", "0"], ["unmatched_counts", "0"], ["joined_rows", "24000"] ], "highlight": [], "note": "连接 QC 表：进补充材料的证据" } }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：expr_long.csv 与 join_qc.csv</h2>
+        <p>把本章操作串成 <code>R/07_join.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>诊断</b>：用 <code>anti_join()</code> 两个方向各跑一次，列出全部不匹配（应为 3 + 3）。</li>
+          <li><b>清洗</b>：<code>str_trim()</code> + <code>str_replace("^H-", "H")</code>；再 anti_join 必须为 0。</li>
+          <li><b>连接</b>：长表 <code>left_join</code> 样本信息；行数 24 000 不变、group 零 NA。</li>
+          <li><b>交付</b>：导出 <code>data/expr_long.csv</code> 与 <code>data/join_qc.csv</code>（5 项数字）。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>QC 表数字与脚本输出逐位一致：12 / 12 / 0 / 0 / 24000。</li>
+            <li>随机抽一个 gene_id，在 counts 与 expr_long 里的 count 完全相同。</li>
+            <li>删掉清洗两行再跑：行数不变但 group 出现 3 个 NA——这就是「静默丢样本」的现场。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in `left_join()`: Join columns must be present in data. ✖ Problem with `by`.</p>
+        <p><b>病因</b>：<code>by</code> 里写的键名在某一侧不存在（如 <code>sample</code> vs <code>sample_id</code>）。</p>
+        <p><b>修复</b>：<code>names()</code> 核对两侧键名；键名不同就用 <code>by = c("a" = "b")</code>。</p>
+        <p><b>预防</b>：连接前先打印两侧 <code>names()</code>——键是连接的唯一契约。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: `by` must be a (named) character vector, list, or NULL.</p>
+        <p><b>病因</b>：<code>by = sample_id</code> 没加引号——R 先去找名为 sample_id 的对象，而不是列名。</p>
+        <p><b>修复</b>：<code>by = "sample_id"</code>。</p>
+        <p><b>预防</b>：join 的 by 参数永远写字符串。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Warning: Detected an unexpected many-to-many relationship between `x` and `y`. ℹ Row 3 of `x` matches multiple rows in `y`.</p>
+        <p><b>病因</b>：右表键有重复（同一 ID 录了两次）——连接会复制行，n 虚增。</p>
+        <p><b>修复</b>：<code>count(y, key)</code> 找重复；去重或用聚合后的唯一键表。</p>
+        <p><b>预防</b>：连接前对右表做键唯一性检查（<code>anyDuplicated()</code>）。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>连接是分析的一部分。</b>丢 3 个样本不是「技术细节」——它把对照组的 n 从 6 变成 5，直接改变功效与结论。所以连接 QC 必须出现在方法与补充材料里：匹配 12/12、未匹配 0/0、行数 24 000。</p>
+      </div>
+      <div class="repro">
+        <p>清洗规则、连接、QC 全部在 <code>07_join.R</code> 里；换一批样本表，改的是规则而不是手改 ID。原始 <code>metadata_raw.csv</code> 保持不动——它是数据证据。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Sample identifiers were trimmed of whitespace and harmonised (H-5/H-6 to H5/H6) before joining the long-format count table to the sample sheet; all 12 samples matched bilaterally (anti-join = 0 on both sides), and the joined table retained 24,000 gene-by-sample rows with no missing group labels.</p>
+        <p class="small muted">中文：连接前对样本编号去除首尾空格并统一连字符（H-5/H-6 → H5/H6）；12 个样本双向全部匹配（两侧 anti-join 均为 0），连接表保持 24 000 个「基因 × 样本」行且分组信息无缺失。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>宽表用 pivot_longer 转长表；连接前 anti_join 双向查不匹配（先看丢没丢）；键清洗写在脚本里；join 后用行数、NA 数、反方向 anti_join 三条对账。QC 表写数字，不写「成功」。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch07">
+        <li><label><input type="checkbox"><span>我能把表达矩阵转成长表并解释 24000 这个数怎么来的</span></label></li>
+        <li><label><input type="checkbox"><span>我会用两个方向的 anti_join 诊断连接键</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 readr 默认 trim_ws 会掩盖空格问题</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出 join 后的三条对账分别查什么</span></label></li>
+        <li><label><input type="checkbox"><span>我能识别 many-to-many 警告并解释行数膨胀</span></label></li>
+        <li><label><input type="checkbox"><span>我能写出含 5 项数字的 join_qc.csv</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch07">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：宽长转换与多表连接",
+          "questions": [
+            { "type": "mcq", "q": "2000 基因 × 12 样本的 counts 转长表后应有多少行？",
+              "options": ["2000", "12", "24000", "2000 × 14"], "answer": 2,
+              "explain": "每个基因 × 每个样本一行：2000 × 12 = 24000。标识列（gene_id/gene_name）保留。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "anti_join(meta, counts_ids) 返回的是？",
+              "options": ["两边都有的行", "meta 里对不上 counts 的行", "counts 里对不上 meta 的行", "全部行"], "answer": 1,
+              "explain": "anti_join(x, y) = x 中不在 y 里的行。要查矩阵侧的不匹配，把两个表对调再跑一次。", "skill": "syntax", "difficulty": 2 },
+            { "type": "tf", "q": "readr 默认 trim_ws = TRUE，会替你把「 C3」的前导空格修掉。",
+              "answer": true,
+              "explain": "默认会 trim——所以本章用 trim_ws = FALSE 才能看见真实的脏数据。默认值可能掩盖问题。", "skill": "repro", "difficulty": 2 },
+            { "type": "mcq", "q": "连接后 24000 行变 24001 行，最可能的原因？",
+              "options": ["行数正常波动", "右表键有重复（多对多）", "left_join 的 bug", "R 版本问题"], "answer": 1,
+              "explain": "右表同一 ID 多行 → 连接复制行。dplyr 会警告 many-to-many，必须停下来查重。", "skill": "syntax", "difficulty": 2 },
+            { "type": "fill", "q": "把 H-5 规范成 H5：str_replace(sample_id, \"^H-\", \"____\")。",
+              "answer": ["H"], "explain": "替换目标写 H：去掉连字符保留字母。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "left_join 后 group 列出现 NA，说明有样本没连上。",
+              "answer": true,
+              "explain": "行还在但信息缺失，正是「静默丢样本」的表现；分组统计会把它们排除，n 悄悄变小。", "skill": "stats", "difficulty": 1 },
+            { "type": "mfill", "q": "连接后反方向核对：矩阵中每个样本都能在样本表找到。",
+              "code": "____(expr_long, meta_clean, by = \"sample_id\") |> nrow()",
+              "blanks": [ { "answer": ["anti_join"] } ],
+              "explain": "反方向 anti_join 为 0 行 = 矩阵侧无遗漏。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "本章 QC 表的正确写法是？",
+              "options": ["写「连接成功」", "写 12/12、0/0、24000 等数字", "只写日期", "不写 QC 表"], "answer": 1,
+              "explain": "可复核的 QC 必须有数字：匹配数、未匹配数、行数。文字结论无法复核。", "skill": "repro", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；QC 表进补充材料。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>expr_long.csv</code></td><td>24000 行 × 8 列长表（count + 样本信息）</td><td>ch17 差异分析、ch08 表达分布图</td></tr>
+            <tr><td><code>join_qc.csv</code></td><td>5 项连接 QC 数字</td><td>论文补充材料</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：数据准备好了，该把它画出来——第 8 章用 ggplot2 把体重与血红蛋白的海拔差异变成一张图。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#tidyr-reshape">速查：宽长转换</a>
+          <a class="btn" href="../cheatsheets.html#joins">速查：多表连接</a>
+          <a class="btn" href="../datasets.html#pika-rnaseq-counts">数据集：counts 矩阵</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

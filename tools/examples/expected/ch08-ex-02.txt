@@ -1,0 +1,6 @@
+# A tibble: 3 × 6
+  altitude_group     n  mean median   min   max
+  <chr>          <int> <dbl>  <dbl> <dbl> <dbl>
+1 high              20  168.   171.  118   194.
+2 low               20  180.   182.  151   215.
+3 mid               20  179.   177.  147.  232 

@@ -1,0 +1,4 @@
+# A tibble: 1 × 3
+  n_total n_missing mean_hb
+    <int>     <int>   <dbl>
+1      60         2    164.

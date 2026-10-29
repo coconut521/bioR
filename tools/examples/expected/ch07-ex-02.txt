@@ -1,0 +1,12 @@
+# A tibble: 3 × 5
+  sample_id group   batch  sex   library_size
+  <chr>     <chr>   <chr>  <chr>        <dbl>
+1 " C3"     control batch1 F           645108
+2 "H-5"     hypoxia batch2 F           557799
+3 "H-6"     hypoxia batch2 M           575253
+# A tibble: 3 × 1
+  sample_id
+  <chr>    
+1 C3       
+2 H5       
+3 H6       

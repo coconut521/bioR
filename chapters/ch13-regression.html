@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 13 章 回归与线性模型：从趋势到预测 | bioR</title>
+<meta name="description" content="拟合并诊断血红蛋白~海拔+性别的线性模型：斜率与 95% CI、R²、残差与杠杆、log-log 异速关系、逻辑回归入门；产出 stats_regression.csv 与 fig_regression.svg。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch13" data-part="III">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 13 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 13 · LINEAR MODELS</span><span>STAGE III · INFER</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">13</div>
+          <div class="cover-copy">
+            <h1>回归与线性模型：从趋势到预测</h1>
+            <p class="cover-lede">海拔每升 1 米，血红蛋白高 0.016 g/L——这个斜率有 CI，模型有残差，解释有边界。</p>
+            <p class="cover-question"><b>本章科研问题：</b>血红蛋白随海拔的斜率是多少？性别与体型的效应如何进入模型？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch12</span><span>数据 pika_physiology · pika_survival</span><span>交付 stats_regression.csv · fig_regression.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>lm()</code> 拟合多变量线性模型并读系数表。</li>
+          <li>用 <code>tidy(conf.int = TRUE)</code> 报告斜率与 95% CI。</li>
+          <li>用 <code>glance()</code> 读 R²、残差标准误与 AIC，并知道 R² 不是全部。</li>
+          <li>用 <code>augment()</code> 检查残差正态性、杠杆与异常点。</li>
+          <li>解释 log-log 模型的斜率（异速指数）。</li>
+          <li>知道相关不等于因果、外推的边界。</li>
+        </ul>
+        <p class="small muted">前置：第 12 章；数据：<code>pika_physiology.csv</code>、<code>pika_survival.csv</code>；交付：<code>stats_regression.csv</code>、<code>fig_regression.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>ANOVA 把海拔当分类变量——它回答「三组有没有差异」。回归把海拔当<b>连续变量</b>——它回答「每升高一米，血红蛋白变化多少」。选择哪一种由问题决定：要量化趋势与预测，用回归；只比较组别，用 ANOVA。这一章同时练习模型的<b>诊断</b>：斜率再漂亮，残差不对劲也不能信。</p>
+      </div>
+
+      <h2>1. 线性模型：斜率与 95% CI</h2>
+      <p><code>lm(y ~ x1 + x2)</code> 拟合线性模型：每个系数是「其他变量不变时，x 增加 1 个单位，y 的平均变化」——这就是「调整后」的含义。系数必须带 CI：斜率的方向与大小都不确定。</p>
+
+      <article class="example-card" id="ch13-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：血红蛋白 ~ 海拔 + 性别</h3>
+          <div class="ex-meta"><span class="tag">lm · tidy</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch13-ex-01"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+m1 &lt;- lm(hemoglobin_g_l ~ altitude_m + sex, data = pika)
+tidy(m1, conf.int = TRUE) |&gt;
+  select(term, estimate, conf.low, conf.high, p.value)</code></pre>
+        <div class="ex-output" data-output-for="ch13-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 5
+  term        estimate conf.low conf.high  p.value
+  &lt;chr&gt;          &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+1 (Intercept)  95.4     79.7     111.     3.06e-17
+2 altitude_m    0.0163   0.0125    0.0200 6.17e-12
+3 sexM          4.58    -0.865    10.0    9.75e- 2</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：两个预测变量；lm 自动剔除含 NA 的行（2 个溶血 NA），有效 n = 58。</li>
+            <li><b>海拔斜率</b>：0.0163 g/L 每米（95% CI 0.0125–0.0200）——每 1000 米约 +16 g/L。</li>
+            <li><b>性别（M vs F）</b>：+4.58 g/L，CI 跨 0（−0.87 至 10.0），p = 0.098——调整海拔后性别效应不确定。</li>
+            <li><b>截距</b>：95.4 g/L 是海拔 0 m、雌性的模型预测——生理上无意义，仅作数学锚点。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把斜率 0.0163 写成「海拔导致血红蛋白升高」——这是观察性数据的<b>关联</b>；因果需要设计（处理、随机化、时间顺序），第 16 章再展开。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "m1": "lm" }, "out": "", "note": "两个预测变量", "dataframe": null },
+          { "line": 5, "vars": { "m1": "lm" }, "out": "0.0163 (0.0125–0.0200)", "note": "海拔斜率带 CI；性别不确定", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>2. 模型质量：R² 与残差标准误</h2>
+      <p><code>glance()</code> 给模型级指标：R²（解释的方差比例）、调整 R²、残差标准误（sigma，与原变量同单位）、AIC。R² 高不等于模型对——它只说明「在这批数据里拟合得好」，不说明因果、不外推、不代表预测力。</p>
+
+      <article class="example-card" id="ch13-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：R² = 0.593，sigma = 10.3 g/L</h3>
+          <div class="ex-meta"><span class="tag">glance</span><span class="tag blue">模型概览</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch13-ex-02"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+m1 &lt;- lm(hemoglobin_g_l ~ altitude_m + sex, data = pika)
+glance(m1) |&gt; select(r.squared, adj.r.squared, sigma, AIC)</code></pre>
+        <div class="ex-output" data-output-for="ch13-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 1 × 4
+  r.squared adj.r.squared sigma   AIC
+      &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1     0.593         0.578  10.3  441.</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>R² = 0.593</b>：海拔 + 性别解释了血红蛋白约 59% 的方差。</li>
+            <li><b>调整 R² = 0.578</b>：扣除变量个数后的版本，用于比较不同变量数的模型。</li>
+            <li><b>sigma = 10.3 g/L</b>：残差的标准差——预测值与实测值的典型偏差约 10 g/L，这是「预测有多准」的直接度量。</li>
+            <li><b>AIC = 441</b>：模型比较用（同一数据集、同一响应变量时越小越好）；不能跨数据集比。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>「R² 高所以模型好」：R² 随变量增多只升不降；n 小变量多时 R² 可以虚高。看调整 R²、sigma 与残差诊断，再做决定。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "m1": "lm" }, "out": "", "note": "同一模型", "dataframe": null },
+          { "line": 5, "vars": { "m1": "lm" }, "out": "R² 0.593 · sigma 10.3", "note": "解释 59% 方差；残差 ~10 g/L", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 诊断：残差、杠杆与外推</h2>
+      <p><code>augment()</code> 给出每个观测的拟合值、残差、标准化残差与杠杆值（hat）。诊断三问：残差近似正态吗？有没有 |标准化残差| &gt; 2 的点？杠杆大的点是否在自变量极值处？</p>
+
+      <article class="example-card" id="ch13-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：残差 Shapiro、最大杠杆与异常点</h3>
+          <div class="ex-meta"><span class="tag">augment</span><span class="tag orange">模型诊断</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch13-ex-03"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+m1 &lt;- lm(hemoglobin_g_l ~ altitude_m + sex, data = pika)
+aug &lt;- augment(m1)
+c(shapiro_resid = round(shapiro.test(aug$.resid)$p.value, 3),
+  max_hat = round(max(aug$.hat), 3),
+  big_resid = sum(abs(aug$.std.resid) &gt; 2))</code></pre>
+        <div class="ex-output" data-output-for="ch13-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">shapiro_resid       max_hat     big_resid 
+        0.073         0.063         3.000 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>shapiro_resid = 0.073</b>：残差未拒绝正态——线性模型的分布前提可接受。</li>
+            <li><b>max_hat = 0.063</b>：最大杠杆 6.3%（60 行模型里远低于 2p/n ≈ 10%）——没有单个点主导拟合。</li>
+            <li><b>big_resid = 3</b>：3 个观测的标准化残差超过 2 个 SD——不是错误，但要在结果里检查它们是否是同一批/同一海拔。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只看 summary 的 p 值不看残差图。异方差（残差随拟合值扩散）会让标准误偏小、p 偏小——这时要用稳健标准误或变换响应变量。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 5, "vars": { "aug": "58 × 15" }, "out": "", "note": "逐观测诊断量", "dataframe": null },
+          { "line": 6, "vars": { "aug": "58 × 15" }, "out": "0.073 · 0.063 · 3", "note": "残差正态可用；无主导点；3 个异常残差", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>4. 尺度：log-log 异速关系</h2>
+      <p>体型与体长的关系常用幂律 <code>mass ∝ length^b</code>：取 log 后变线性，斜率就是指数 b。注意解释：斜率 1 表示等比例，斜率 3 才是「三维等速生长」的经典预期——数据里的 1.04 说明这批模拟数据没有按立方关系生成。</p>
+
+      <article class="example-card" id="ch13-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：log(体重) ~ log(体长) 的斜率</h3>
+          <div class="ex-meta"><span class="tag">log-log</span><span class="tag blue">异速生长</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch13-ex-04"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+m2 &lt;- lm(log(body_mass_g) ~ log(body_length_mm), data = pika)
+tidy(m2, conf.int = TRUE) |&gt; select(term, estimate, conf.low, conf.high)</code></pre>
+        <div class="ex-output" data-output-for="ch13-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 2 × 4
+  term                estimate conf.low conf.high
+  &lt;chr&gt;                  &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 (Intercept)           -0.322   -3.11       2.46
+2 log(body_length_mm)    1.04     0.514      1.57</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>斜率 1.04</b>（95% CI 0.514–1.57）：体长每增加 1%，体重平均增加约 1%——近似等比例。</li>
+            <li><b>CI 很宽</b>：n = 60 且体长范围有限；要谈「是否等于 3」显然可以拒绝（CI 不含 3），但「是否等于 1」也不能排除。</li>
+            <li><b>解释</b>：log-log 斜率是弹性（百分比对百分比），不是「每毫米多少克」。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 log-log 斜率解释成线性斜率。log 尺度上的 1.04 意味着乘性关系；写报告时要说明「log-log 模型，斜率为异速指数」。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "m2": "lm" }, "out": "", "note": "log-log 模型", "dataframe": null },
+          { "line": 5, "vars": { "m2": "lm" }, "out": "1.04 (0.51–1.57)", "note": "异速指数≈1，CI 宽", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch13-regression">
+        <div class="plot-stage-head">
+          <span>图 13.1 · 血红蛋白 × 海拔（拟合线 + 95% CI）</span>
+          <a href="../assets/figures/chapters/ch13-regression.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch13-regression.svg"
+               alt="血红蛋白对海拔的散点图（按性别分色与形状），叠加一条线性拟合线与浅蓝色 95% 置信带；海拔越高血红蛋白越高，置信带在采样点之间略宽。"
+               width="712" height="440">
+        </div>
+        <figcaption>图 13.1 · 血红蛋白与海拔的线性拟合；n = 58；斜率 0.0163 g/L 每米（95% CI 0.0125–0.0200），R² = 0.59；阴影为拟合线的 95% 置信带（不是预测带）；海拔仅 3 个采样点，直线不外推。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch13_regression.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <div class="explainer" data-engine="anatomy">
+        <script type="application/json" class="explainer-data">{
+          "question": "一条回归线由什么构成？",
+          "frames": [
+            { "src": "../assets/figures/chapters/ch13-regression.svg",
+              "alt": "回归拟合线",
+              "box": [22, 22, 52, 55],
+              "note": "拟合线：斜率 0.0163 g/L 每米——「海拔 +1000 m，血红蛋白平均 +16.3 g/L」，这是调整了性别后的边际效应。" },
+            { "src": "../assets/figures/chapters/ch13-regression.svg",
+              "alt": "95% 置信带",
+              "box": [18, 18, 62, 64],
+              "note": "95% 置信带：拟合线本身的不确定性（不是个体预测带）。采样点之间变宽，因为那里没有数据支撑。" },
+            { "src": "../assets/figures/chapters/ch13-regression.svg",
+              "alt": "残差示例点",
+              "box": [38, 10, 20, 22],
+              "note": "残差：点与线的垂直距离。3 个 |标准化残差| &gt; 2 的点要在诊断里点名，而不是悄悄删除。" },
+            { "src": "../assets/figures/chapters/ch13-regression.svg",
+              "alt": "外推边界",
+              "box": [2, 6, 96, 82],
+              "note": "外推边界：海拔只有 3200/4100/5000 三个采样点；把线延长到 2000 或 6000 m 是模型外推，没有数据支持。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>5. 端到端：stats_regression.csv、回归图与逻辑回归</h2>
+      <p>结果表把三个模型的系数并排：连续响应（血红蛋白）、log-log 异速、以及二分类响应的逻辑回归（OR）。注意 glm 的 estimate 是<b>对数几率</b>，<code>exponentiate = TRUE</code> 后才是 OR。</p>
+
+      <article class="example-card" id="ch13-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：三个模型的结果表 + 回归图</h3>
+          <div class="ex-meta"><span class="tag">端到端</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch13-ex-05"><code class="r">library(readr); library(dplyr); library(broom); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+surv &lt;- read_csv(here::here("assets/data/pika_survival.csv"),
+                 show_col_types = FALSE)
+m1 &lt;- lm(hemoglobin_g_l ~ altitude_m + sex, data = pika)
+m2 &lt;- lm(log(body_mass_g) ~ log(body_length_mm), data = pika)
+g1 &lt;- glm(status ~ treatment, data = surv, family = binomial)
+dir.create(here::here("data"), showWarnings = FALSE)
+res &lt;- bind_rows(
+  tidy(m1, conf.int = TRUE) |&gt;
+    transmute(model = "lm: hb ~ altitude + sex", term,
+              estimate = round(estimate, 4),
+              conf_low = round(conf.low, 4), conf_high = round(conf.high, 4)),
+  tidy(m2, conf.int = TRUE) |&gt;
+    transmute(model = "lm: log mass ~ log length", term,
+              estimate = round(estimate, 3),
+              conf_low = round(conf.low, 3), conf_high = round(conf.high, 3)),
+  tidy(g1, exponentiate = TRUE, conf.int = TRUE) |&gt;
+    transmute(model = "glm: survival ~ treatment (OR)", term,
+              estimate = round(estimate, 2),
+              conf_low = round(conf.low, 2), conf_high = round(conf.high, 2)))
+write_csv(res, here::here("data/stats_regression.csv"))
+hb &lt;- pika[!is.na(pika$hemoglobin_g_l), ]
+p &lt;- ggplot(hb, aes(altitude_m, hemoglobin_g_l)) +
+  geom_point(size = 1.2, alpha = .6, colour = "#0072B2") +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE,
+              colour = "#0072B2", fill = "#BBD7EC") +
+  labs(x = "Altitude (m)", y = "Haemoglobin (g/L)") +
+  theme_classic(base_size = 9)
+dir.create(here::here("figures"), showWarnings = FALSE)
+ggsave(here::here("figures/fig_regression.svg"), p,
+       width = 89, height = 55, units = "mm")
+head(res, 5)
+file.exists(here::here(c("data/stats_regression.csv", "figures/fig_regression.svg")))</code></pre>
+        <div class="ex-output" data-output-for="ch13-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 5 × 5
+  model                     term                estimate conf_low conf_high
+  &lt;chr&gt;                     &lt;chr&gt;                  &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 lm: hb ~ altitude + sex   (Intercept)          95.4     79.7       111.  
+2 lm: hb ~ altitude + sex   altitude_m            0.0163   0.0125      0.02
+3 lm: hb ~ altitude + sex   sexM                  4.58    -0.865      10.0 
+4 lm: log mass ~ log length (Intercept)          -0.322   -3.10        2.46
+5 lm: log mass ~ log length log(body_length_mm)   1.04     0.514       1.57
+[1] TRUE TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 7–9 行</b>：三个模型——连续、log-log、二分类（binomial）。</li>
+            <li><b>第 11–25 行</b>：统一结果表：模型名、term、estimate、CI 两列；glm 行已取 OR。</li>
+            <li><b>glm 结果</b>：低氧 vs 对照的死亡几率 OR = 3.86（95% CI 1.01–19.0，p = 0.064）——方向提示风险升高，但 CI 宽且跨近 1。</li>
+            <li><b>第 32–40 行</b>：回归图 + 文件存在性检查 TRUE TRUE。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 glm 的 estimate 直接当 OR 报告（忘了 exponentiate）。log-odds = 1.35 ≠ OR = 3.86——差一个指数。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11", "surv": "60 × 6" }, "out": "", "note": "读入两张表", "dataframe": null },
+          { "line": 9, "vars": { "g1": "glm" }, "out": "", "note": "逻辑回归：status ~ treatment", "dataframe": null },
+          { "line": 26, "vars": { "res": "7 × 5" }, "out": "OR 3.86 (1.01–19.0)", "note": "低氧死亡几率升高，CI 宽", "dataframe": {
+            "columns": [ { "name": "model", "type": "chr" }, { "name": "term", "type": "chr" }, { "name": "estimate", "type": "dbl" }, { "name": "conf_low", "type": "dbl" }, { "name": "conf_high", "type": "dbl" } ],
+            "rows": [ ["glm: survival ~ treatment (OR)", "treatmenthypoxia", "3.86", "1.01", "19.0"] ], "highlight": [0], "note": "OR 已 exponentiate" } },
+          { "line": 40, "vars": { "p": "ggplot" }, "out": "TRUE TRUE", "note": "结果表与回归图落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：回归结果表与图</h2>
+        <p>把本章操作串成 <code>R/13_regression.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>主模型</b>：<code>hb ~ altitude_m + sex</code>；报斜率、95% CI、R²、sigma。</li>
+          <li><b>诊断</b>：残差 Shapiro、最大杠杆、|标准化残差| &gt; 2 的个数。</li>
+          <li><b>辅助</b>：log-log 异速模型；逻辑回归 OR（exponentiate）。</li>
+          <li><b>交付</b>：<code>stats_regression.csv</code> + <code>fig_regression.svg</code>（89 mm，带 CI 带）。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>斜率写成「每米」还是「每千米」？单位一致。</li>
+            <li>图注写明「置信带不是预测带」。</li>
+            <li>因果措辞：用「associated with」，不用「caused by」。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 0 (non-NA) cases</p>
+        <p><b>病因</b>：响应变量或预测变量全是 NA（常见于 join 失败后整列缺失）。</p>
+        <p><b>修复</b>：检查 <code>sum(is.na())</code> 与 join QC；修复数据再建模。</p>
+        <p><b>预防</b>：建模前 <code>count()</code> 有效行数。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in model.frame.default(formula = y ~ x, data = d) : variable lengths differ (found for 'sex')</p>
+        <p><b>病因</b>：公式里用了外部向量（长度与 data 不一致），或 data 参数里没有该列。</p>
+        <p><b>修复</b>：所有变量都放在同一个 data 里；核对列名。</p>
+        <p><b>预防</b>：公式只用 data 的列，不用全局向量。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in eval(family$initialize) : y values must be 0 &lt;= y &lt;= 1</p>
+        <p><b>病因</b>：逻辑回归的响应不是 0/1（比如 status 记成了 1/2）。</p>
+        <p><b>修复</b>：<code>mutate(status = status - 1)</code> 或重新编码为 0/1 因子。</p>
+        <p><b>预防</b>：glm 前 <code>table(y)</code> 确认取值。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>模型是工具，不是真理。</b>R² = 0.59 说明这批数据里的关联强度；它不证明因果、不支持外推、也不保证预测。诊断（残差、杠杆、异常点）与设计（观察 vs 实验）共同决定解释的边界。</p>
+      </div>
+      <div class="repro">
+        <p>模型公式、诊断与图表全部在 <code>13_regression.R</code>；结果表里的每个系数都能由 <code>tidy()</code> 复现，图由同一脚本渲染。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Haemoglobin was modelled with ordinary least squares as a function of sampling altitude and sex; the altitude coefficient was 0.0163 g/L per metre (95% CI 0.0125–0.0200; R² = 0.59, residual SE = 10.3 g/L). Residuals did not depart from normality (Shapiro–Wilk p = 0.07), and no observation exceeded a hat value of 0.07. A log–log model described body mass as a power function of body length, and a binomial GLM estimated the odds ratio for mortality under hypoxia.</p>
+        <p class="small muted">中文：血红蛋白以采样海拔与性别为预测变量做普通最小二乘回归；海拔系数 0.0163 g/L 每米（95% CI 0.0125–0.0200；R² = 0.59，残差 SE = 10.3 g/L）。残差未偏离正态（Shapiro–Wilk p = 0.07），无观测杠杆值超过 0.07。以 log–log 模型描述体重与体长的幂律关系，并以二项 GLM 估计低氧下死亡的优势比。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>lm 的系数是「调整后」的边际效应，必须带 CI；R² 与 sigma 一起看；augment 做残差/杠杆诊断；log-log 斜率是异速指数；glm 的 OR 要 exponentiate。相关不等于因果，外推需要数据支撑。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch13">
+        <li><label><input type="checkbox"><span>我能解释 lm 系数「其他变量不变」的含义</span></label></li>
+        <li><label><input type="checkbox"><span>我能从 tidy(conf.int=TRUE) 读出斜率与 CI</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 R²、调整 R² 与 sigma 各自回答什么问题</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 augment 检查残差与杠杆</span></label></li>
+        <li><label><input type="checkbox"><span>我能正确解释 log-log 斜率（弹性/异速指数）</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 glm 的 estimate 与 OR 的关系</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch13">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：回归与线性模型",
+          "questions": [
+            { "type": "mcq", "q": "lm 中海拔系数 0.0163 的正确解释是？",
+              "options": ["海拔导致血红蛋白升高", "其他变量不变时，海拔每高 1 m，血红蛋白平均高 0.0163 g/L", "海拔与血红蛋白相关系数", "每 1 g/L 对应海拔 0.0163 m"], "answer": 1,
+              "explain": "系数是调整后的边际效应；因果措辞需要设计支持。", "skill": "stats", "difficulty": 1 },
+            { "type": "tf", "q": "R² 越高，模型越接近真实因果关系。",
+              "answer": false,
+              "explain": "R² 是解释方差比例，与因果无关；也可能因过拟合虚高。", "skill": "stats", "difficulty": 1 },
+            { "type": "mcq", "q": "sigma = 10.3 g/L 说明？",
+              "options": ["斜率的标准误", "残差的标准差（预测的典型误差）", "总方差", "样本量"], "answer": 1,
+              "explain": "sigma 是残差标准误，与响应变量同单位，直接衡量预测精度。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "取模型级指标：____(m1)。",
+              "answer": ["glance"], "explain": "broom::glance() 给 R²、sigma、AIC 等一行概览。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "log-log 模型斜率 1.04 意味着？",
+              "options": ["体长每多 1 mm，体重多 1.04 g", "体长每增 1%，体重约增 1%", "相关系数 1.04", "模型无效"], "answer": 1,
+              "explain": "log-log 斜率是弹性：百分比变化之比（异速指数）。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "把拟合线从 3200–5000 m 外推到 6000 m 是合理预测。",
+              "answer": false,
+              "explain": "采样海拔只有 3 个点；外推没有数据支撑，模型可能失效。", "skill": "repro", "difficulty": 1 },
+            { "type": "mfill", "q": "补全：逻辑回归取 OR。",
+              "code": "tidy(g1, exponentiate = ____, conf.int = TRUE)",
+              "blanks": [ { "answer": ["TRUE"] } ],
+              "explain": "exponentiate=TRUE 把 log-odds 转成 OR。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "最大 hat = 0.063（n = 58）说明？",
+              "options": ["有强杠杆点主导拟合", "没有单个观测主导模型", "残差很大", "模型无效"], "answer": 1,
+              "explain": "2p/n ≈ 10%；6.3% 远低于阈值，杠杆正常。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/ 与 figures/；模型与图同源。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>stats_regression.csv</code></td><td>3 个模型的系数 + CI（7 行）</td><td>ch14 报告结果表</td></tr>
+            <tr><td><code>fig_regression.svg</code></td><td>拟合线 + 95% CI 带</td><td>ch14 图集</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：分析都做完了，导师要「换台电脑也能跑」——第 14 章把 ch01–ch13 串成一份 Quarto 报告并锁定环境。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+          <a class="btn" href="../cheatsheets.html#report-sentences">速查：统计报告句型</a>
+          <a class="btn" href="../datasets.html#pika-survival">数据集：生存实验</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

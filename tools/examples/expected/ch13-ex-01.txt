@@ -1,0 +1,6 @@
+# A tibble: 3 × 5
+  term        estimate conf.low conf.high  p.value
+  <chr>          <dbl>    <dbl>     <dbl>    <dbl>
+1 (Intercept)  95.4     79.7     111.     3.06e-17
+2 altitude_m    0.0163   0.0125    0.0200 6.17e-12
+3 sexM          4.58    -0.865    10.0    9.75e- 2

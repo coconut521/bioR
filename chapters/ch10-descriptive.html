@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 10 章 描述统计与分布：先看数据，再做检验 | bioR</title>
+<meta name="description" content="用均值±SD、中位数(IQR)、直方图与密度描述分布；用预定义 IQR 规则标记 3 个离群值；用 Shapiro 检验与 log 变换讨论前提；产出 fig_distributions.svg。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch10" data-part="III">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 10 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 10 · DESCRIPTIVE STATS</span><span>STAGE III · INFER</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">10</div>
+          <div class="cover-copy">
+            <h1>描述统计与分布：先看数据，再做检验</h1>
+            <p class="cover-lede">血红蛋白右偏、体重有三个离群值——不做这一步就直接 t 检验，是在赌前提成立。</p>
+            <p class="cover-question"><b>本章科研问题：</b>这些数据长什么样？直接做 t 检验/ANOVA 合适吗？</p>
+            <div class="cover-meta">
+              <span>90–120 MIN</span><span>前置 ch09</span><span>数据 pika_physiology.csv</span><span>交付 02_descriptive.R · fig_distributions.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>mean()</code>/<code>sd()</code>/<code>median()</code>/<code>IQR()</code>/<code>quantile()</code> 描述一个变量。</li>
+          <li>用直方图 + 密度曲线判断偏态，而不是只看均值。</li>
+          <li>理解正态性检验的边界（n、尾部、机械决策的危险）。</li>
+          <li>用<b>预定义</b>的 IQR 规则标记离群值（标记 ≠ 删除）。</li>
+          <li>判断是否需要 log 变换，并把决定写进分析记录。</li>
+          <li>产出分布面板 <code>fig_distributions.svg</code>。</li>
+        </ul>
+        <p class="small muted">前置：第 9 章；数据：<code>pika_physiology.csv</code>；交付：<code>02_descriptive.R</code>、<code>fig_distributions.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>「直接做检验」是新手最常见的捷径，也是前提被违反的最常见来源。在 ch11 的 t 检验之前，这一章把三件事做完：<b>描述</b>（均值±SD 还是中位数(IQR)）、<b>看形状</b>（偏态与离群值）、<b>做决定</b>（要不要变换、要不要标记离群值）。每个决定都写在脚本注释里——这是「先于结果」的证据。</p>
+      </div>
+
+      <h2>1. 描述统计：均值、SD、中位数与 IQR</h2>
+      <p>连续变量的描述统计只有两类组合：<b>均值 ± SD</b>（近似对称）与<b>中位数 (IQR)</b>（偏态或有离群值）。两者都报也无妨，但必须说清为什么选哪个。Table 1 里已经见过这个选择——现在把它做成逐组的小表。</p>
+
+      <article class="example-card" id="ch10-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：三组体重与血红蛋白的描述统计</h3>
+          <div class="ex-meta"><span class="tag">mean · sd · median · IQR</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch10-ex-01"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(n = n(),
+            mean = round(mean(body_mass_g), 1),
+            sd = round(sd(body_mass_g), 1),
+            median = round(median(body_mass_g), 1),
+            iqr = round(IQR(body_mass_g), 1),
+            .groups = "drop")
+hb &lt;- pika$hemoglobin_g_l
+c(mean = round(mean(hb, na.rm = TRUE), 1),
+  median = round(median(hb, na.rm = TRUE), 1),
+  sd = round(sd(hb, na.rm = TRUE), 1),
+  iqr = round(IQR(hb, na.rm = TRUE), 1))</code></pre>
+        <div class="ex-output" data-output-for="ch10-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 6
+  altitude_group     n  mean    sd median   iqr
+  &lt;chr&gt;          &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+1 high              20  168.  16.3   171.  13.9
+2 low               20  180.  15.9   182.  21  
+3 mid               20  179.  16.5   177.   9.5
+  mean median     sd    iqr 
+ 164.3  162.8   15.9   15.5 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–10 行</b>：每组五个数字。high 组均值 168.3 &lt; 中位数 171.1——左尾被 118 g 拉低，典型的偏态信号。</li>
+            <li><b>第 11–14 行</b>：血红蛋白均值 164.3 &gt; 中位数 162.8，右偏；IQR 15.5 与 SD 15.9 接近。</li>
+            <li><b>判断</b>：体重用中位数(IQR) 描述更稳；血红蛋白虽然右偏，但幅度不大（均值-中位数 1.5 g/L）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>偏态数据报 mean ± SD：SD 被长尾撑大，读者会以为分布对称。<b>均值与中位数差得远 = 偏态信号</b>，这时优先中位数(IQR)，或同时报并说明。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 9, "vars": { "pika": "grouped ×3" }, "out": "# A tibble: 3 × 6", "note": "逐组五数概括", "dataframe": {
+            "columns": [ { "name": "altitude_group", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "mean", "type": "dbl" }, { "name": "median", "type": "dbl" }, { "name": "iqr", "type": "dbl" } ],
+            "rows": [ ["high", "20", "168.", "171.", "13.9"], ["low", "20", "180.", "182.", "21"], ["mid", "20", "179.", "177.", "9.5"] ], "highlight": [0], "note": "high：均值 < 中位数（左尾被 118 g 拉低）" } },
+          { "line": 14, "vars": { "hb": "dbl[60]" }, "out": "164.3 162.8 15.9 15.5", "note": "血红蛋白：均值 > 中位数（右偏）", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>2. 分布形状：直方图、密度与正态性检验的边界</h2>
+      <p>形状要靠图看：直方图 + 密度曲线给出尾部与峰的形状。正态性检验（Shapiro–Wilk）只是辅助——它回答「偏离正态是否可检测」，不回答「偏离是否影响检验」。n 越大，越容易显著。</p>
+
+      <article class="example-card" id="ch10-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：三个 Shapiro 检验的对照</h3>
+          <div class="ex-meta"><span class="tag">shapiro.test</span><span class="tag orange">前提判断</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch10-ex-02"><code class="r">library(readr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+round(shapiro.test(pika$body_mass_g)$p.value, 3)
+round(shapiro.test(pika$hemoglobin_g_l)$p.value, 3)
+round(shapiro.test(log(pika$hemoglobin_g_l))$p.value, 3)</code></pre>
+        <div class="ex-output" data-output-for="ch10-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 0.011
+[1] 0.152
+[1] 0.565</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：体重 p = 0.011——有证据偏离正态（三个离群值 + 偏态）。</li>
+            <li><b>第 5 行</b>：血红蛋白 p = 0.152——<b>没有</b>检测到偏离，尽管直方图右尾略长。小样本 + 轻偏态时检验不敏感。</li>
+            <li><b>第 6 行</b>：log 后 p = 0.565——更「正态」了，但原始数据本来也没被拒绝。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>「p &lt; 0.05 就必须变换 / 必须用非参数检验」——机械决策。要看偏离的<b>幅度</b>与<b>影响</b>：t 检验对轻偏态稳健；n 大时 Shapiro 几乎必然显著。检验是参考，图与设计才是决策依据。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "[1] 0.011", "note": "体重：检测到偏离正态", "dataframe": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "[1] 0.152", "note": "血红蛋白：未拒绝正态", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 离群值：用规则标记，而不是删除</h2>
+      <p>离群值的正确动作是<b>标记 + 报告</b>，不是删除。规则必须事先定义：本章用 1.5×IQR 规则（箱线图同款），把标记写进数据与图注。删除只在「有独立的测量错误证据」时才允许。</p>
+
+      <article class="example-card" id="ch10-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：1.5×IQR 规则标出 3 个个体</h3>
+          <div class="ex-meta"><span class="tag">quantile · IQR</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch10-ex-03"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+q &lt;- quantile(pika$body_mass_g, c(.25, .75))
+iqr &lt;- IQR(pika$body_mass_g)
+lo &lt;- unname(q[1] - 1.5 * iqr)
+hi &lt;- unname(q[2] + 1.5 * iqr)
+c(lower = round(lo, 1), upper = round(hi, 1))
+pika |&gt;
+  filter(body_mass_g &lt; lo | body_mass_g &gt; hi) |&gt;
+  select(id, altitude_group, body_mass_g)</code></pre>
+        <div class="ex-output" data-output-for="ch10-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">lower upper 
+146.5 204.3 
+# A tibble: 3 × 3
+  id    altitude_group body_mass_g
+  &lt;chr&gt; &lt;chr&gt;                &lt;dbl&gt;
+1 P017  low                   215.
+2 P023  mid                   232 
+3 P048  high                  118 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–7 行</b>：IQR = Q3 − Q1；上下界 = Q1 − 1.5×IQR、Q3 + 1.5×IQR。本数据 [146.5, 204.3]。</li>
+            <li><b>第 8 行</b>：三个被标记者：P017（215）、P023（232）、P048（118 g）——分别来自低、中、高海拔组。</li>
+            <li><b>处置</b>：标记保留在数据里，图注写「橙点为超出 1.5×IQR 的个体，未删除」；敏感性分析可再跑一遍去掉这 3 行的结果（第 13 章）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>先做检验、发现不显著、再回来删离群值重跑——这是 p 值钓鱼。规则必须<b>在看结果之前</b>写下并写进脚本。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 8, "vars": { "pika": "60 × 11" }, "out": "146.5 204.3", "note": "IQR 规则上下界", "dataframe": null },
+          { "line": 11, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 3 × 3", "note": "3 个离群值：P017/P023/P048", "dataframe": {
+            "columns": [ { "name": "id", "type": "chr" }, { "name": "altitude_group", "type": "chr" }, { "name": "body_mass_g", "type": "dbl" } ],
+            "rows": [ ["P017", "low", "215."], ["P023", "mid", "232"], ["P048", "high", "118"] ], "highlight": [0, 1, 2], "note": "标记，不是删除" } }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch10-distributions">
+        <div class="plot-stage-head">
+          <span>图 10.1 · 分布面板（血红蛋白 / 体重）</span>
+          <a href="../assets/figures/chapters/ch10-distributions.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch10-distributions.svg"
+               alt="双面板分布图：A 面板为血红蛋白直方图叠加密度曲线，右尾略长；B 面板为体重箱线图叠加个体点，三个橙色点标为 IQR 规则离群值（118、215、232 g）。"
+               width="1200" height="459">
+        </div>
+        <figcaption>图 10.1 · 描述性分布面板：A 血红蛋白（n = 58，组距 5 g/L；密度曲线显示右偏）；B 体重（n = 60；橙点为超出 1.5×IQR 规则的 3 个个体）；离群值按预先定义的规则标记，未删除。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch10_distributions.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <div class="explainer" data-engine="stats">
+        <script type="application/json" class="explainer-data">{
+          "question": "均值与离群值：一个数字能被拉多远？",
+          "frames": [
+            { "groups": [
+              { "label": "high", "mean": 168.3, "sd": 16.3, "n": 20 },
+              { "label": "low", "mean": 180.1, "sd": 15.9, "n": 20 },
+              { "label": "mid", "mean": 179.4, "sd": 16.5, "n": 20 }
+            ], "effect": "组间均值差约 11 g，但每组 SD 约 16 g——分布重叠明显；只看均值±SD 会高估组间分离。",
+              "note": "三组体重均值 ± SD：高海拔更低，但误差带几乎相接。" },
+            { "groups": [
+              { "label": "全部 n=60", "mean": 175.4, "sd": 16.9, "n": 60 },
+              { "label": "去掉 232 g", "mean": 174.4, "sd": 15.3, "n": 59 }
+            ], "effect": "一个 232 g 的极端值把均值抬高 1.0 g、SD 抬高 1.6；中位数只从 175.8 动到 175.4（0.4 g）。",
+              "note": "离群值对均值/SD 的影响远大于对中位数/IQR 的影响。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>4. 变换：log 什么时候用</h2>
+      <p>log 变换压缩右侧长尾，适用于<b>乘性</b>误差与右偏数据（浓度、计数、时间）。判断依据是图与背景知识，不是「Shapiro 显著就 log」。变换要在看组间结果之前决定，并在方法与图注里写明。</p>
+
+      <article class="example-card" id="ch10-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：log 前后的均值与 SD</h3>
+          <div class="ex-meta"><span class="tag">log</span><span class="tag blue">前提处理</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch10-ex-04"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+hb &lt;- pika$hemoglobin_g_l
+c(raw_mean = round(mean(hb, na.rm = TRUE), 1),
+  raw_sd = round(sd(hb, na.rm = TRUE), 1))
+c(log_mean = round(mean(log(hb), na.rm = TRUE), 2),
+  log_sd = round(sd(log(hb), na.rm = TRUE), 2))
+round(shapiro.test(log(hb))$p.value, 3)</code></pre>
+        <div class="ex-output" data-output-for="ch10-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">raw_mean   raw_sd 
+   164.3     15.9 
+log_mean   log_sd 
+     5.1      0.1 
+[1] 0.565</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–5 行</b>：原始尺度：均值 164.3、SD 15.9 g/L。</li>
+            <li><b>第 6–7 行</b>：log 尺度：均值 5.10、SD 0.10（log g/L）——数值变小但信息未丢。</li>
+            <li><b>第 8 行</b>：log 后 Shapiro p = 0.565。注意：原始数据 p = 0.152 本来也没拒绝——<b>本例不需要 log</b>。</li>
+            <li><b>决定</b>：写进脚本注释：「血红蛋白轻右偏，Shapiro 未拒绝；保留原始尺度，报告 mean ± SD；log 作为敏感性分析」。 </li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>报告 log 后的均值（5.10）却不说明是 log 尺度——读者以为是 g/L。变换后的结果要么 back-transform 再报告，要么明确标注单位。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 5, "vars": { "hb": "dbl[60]" }, "out": "164.3 15.9", "note": "原始尺度", "dataframe": null },
+          { "line": 7, "vars": { "hb": "dbl[60]" }, "out": "5.10 0.10", "note": "log 尺度（单位变了）", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>5. 分布面板交付</h2>
+      <p>把前面的判断做成一张两面板的分布图：A 直方图 + 密度（看形状），B 箱线 + 个体点（看离群值）。这正是图 10.1 的生成代码——与站点图同源。</p>
+
+      <article class="example-card" id="ch10-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：fig_distributions.svg</h3>
+          <div class="ex-meta"><span class="tag">patchwork · ggsave</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch10-ex-05"><code class="r">library(readr); library(dplyr); library(ggplot2); library(patchwork)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+dir.create(here::here("figures"), showWarnings = FALSE)
+hb &lt;- pika$hemoglobin_g_l[!is.na(pika$hemoglobin_g_l)]
+q &lt;- quantile(pika$body_mass_g, c(.25, .75))
+lo &lt;- q[1] - 1.5 * IQR(pika$body_mass_g)
+hi &lt;- q[2] + 1.5 * IQR(pika$body_mass_g)
+pika$outlier &lt;- ifelse(pika$body_mass_g &lt; lo | pika$body_mass_g &gt; hi,
+                       "IQR outlier", "within 1.5 x IQR")
+panel_a &lt;- ggplot(data.frame(hb = hb), aes(hb)) +
+  geom_histogram(aes(y = after_stat(density)), binwidth = 5, boundary = 0,
+                 fill = "#56B4E9", colour = "white") +
+  geom_density(colour = "#0072B2") +
+  labs(x = "Haemoglobin (g/L)", y = "Density") +
+  theme_classic(base_size = 8)
+panel_b &lt;- ggplot(pika, aes("Body mass", body_mass_g)) +
+  geom_boxplot(width = .35, outlier.shape = NA) +
+  geom_jitter(aes(colour = outlier), width = .08, size = 1) +
+  scale_colour_manual(values = c("IQR outlier" = "#D55E00",
+                                 "within 1.5 x IQR" = "#4D4D4D")) +
+  labs(x = NULL, y = "Body mass (g)", colour = NULL) +
+  theme_classic(base_size = 8)
+fig &lt;- wrap_plots(panel_a, panel_b, nrow = 1) +
+  plot_annotation(tag_levels = "A")
+ggsave(here::here("figures/fig_distributions.svg"), fig,
+       width = 183, height = 70, units = "mm")
+file.exists(here::here("figures/fig_distributions.svg"))</code></pre>
+        <div class="ex-output" data-output-for="ch10-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 5–9 行</b>：剔除 NA、按 IQR 规则标记离群值（不删除）。</li>
+            <li><b>第 10–17 行</b>：面板 A：直方图（密度归一）+ 密度曲线——形状一眼可见。</li>
+            <li><b>第 18–23 行</b>：面板 B：箱线 + 个体点，离群值用橙色标记。</li>
+            <li><b>第 24–27 行</b>：拼图 + A/B 标签 + 183 × 70 mm 导出。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把标记的离群值直接从图里剔除——图就说谎了。橙色点保留在图上，图注解释规则与处理方式；敏感性分析另开一节。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 9, "vars": { "pika": "60 × 12" }, "out": "", "note": "outlier 列：标记 3 个（不删）", "dataframe": null },
+          { "line": 24, "vars": { "fig": "patchwork" }, "out": "", "note": "拼图 + A/B", "dataframe": null },
+          { "line": 27, "vars": { "fig": "patchwork" }, "out": "[1] TRUE", "note": "fig_distributions.svg 落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：描述统计脚本与分布图</h2>
+        <p>把本章操作串成 <code>R/02_descriptive.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>描述</b>：逐组体重与血红蛋白的 n、mean±SD、median(IQR)；说明选哪种描述。</li>
+          <li><b>形状</b>：直方图 + 密度；三个 Shapiro 结果；写一句「是否需要变换」的判断与依据。</li>
+          <li><b>离群值</b>：1.5×IQR 规则标记 3 个个体；图注写明「未删除」。</li>
+          <li><b>交付</b>：导出 <code>figures/fig_distributions.svg</code>（183 mm）。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>离群值规则写在脚本顶部（先于检验）。</li>
+            <li>「是否 log」的决定写进注释，并与 Shapiro 结果一起报告。</li>
+            <li>分布图里 3 个橙点可见；图注含 n 与规则定义。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in shapiro.test(x) : sample size must be between 3 and 5000</p>
+        <p><b>病因</b>：样本量超出 Shapiro–Wilk 的适用范围（&lt; 3 或 &gt; 5000）。</p>
+        <p><b>修复</b>：小样本看 QQ 图与背景知识；大样本改用图形判断，别用检验的 p 值。</p>
+        <p><b>预防</b>：正态性用「图 + 检验 + n」三件套，不迷信单一 p。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in quantile.default(x, c(0.25, 0.75)) : missing values and NaN's not allowed if 'na.rm' is FALSE</p>
+        <p><b>病因</b>：血红蛋白含 NA，直接算分位数报错。</p>
+        <p><b>修复</b>：<code>quantile(x, probs, na.rm = TRUE)</code>，或先 filter 掉 NA 并记录。</p>
+        <p><b>预防</b>：描述统计前先 <code>sum(is.na())</code>，决定「剔除并记录」而不是随手加 na.rm。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Warning in mean.default(hb) : argument is not numeric or logical: returning NA</p>
+        <p><b>病因</b>：对字符列调 mean()（读入时某一列被当成 chr，比如带单位的「155 g/L」）。</p>
+        <p><b>修复</b>：<code>parse_number()</code> 清洗后转数值；核对列类型。</p>
+        <p><b>预防</b>：导入后 <code>glimpse()</code> 查类型（第 3 章）。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>分布形状决定描述统计与检验。</b>偏态或有离群值 → 中位数(IQR) 描述、Wilcoxon 或置换检验；近似对称 → mean±SD、t/ANOVA。变换与离群值处理必须<b>先于</b>看组间结果决定，并记录在脚本与图注里。</p>
+      </div>
+      <div class="repro">
+        <p>离群值规则、变换决定、描述统计全部写在 <code>02_descriptive.R</code>；图 10.1 由同一脚本生成——重跑即复现，不靠手改表格。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Continuous variables are reported as mean ± SD with median (IQR) where distributions were skewed. Outliers were defined a priori by the 1.5×IQR rule and flagged (not removed) in all analyses. Normality was assessed graphically with histograms and density curves and supplemented by Shapiro–Wilk tests; no transformation was applied to haemoglobin.</p>
+        <p class="small muted">中文：连续变量报告均值±SD，偏态变量同时报告中位数(IQR)；离群值按预先定义的 1.5×IQR 规则标记（未删除）；正态性以直方图与密度曲线评估，并以 Shapiro–Wilk 检验辅助；血红蛋白未做变换。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>先描述再检验：均值±SD 或中位数(IQR) 由分布形状决定；直方图 + 密度看形状，Shapiro 只作参考；1.5×IQR 规则标记离群值但保留；log 变换先决定后记录。分布面板与决定一起交付。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch10">
+        <li><label><input type="checkbox"><span>我能用五个数字描述一组数据并解释 mean 与 median 的差</span></label></li>
+        <li><label><input type="checkbox"><span>我能说明 Shapiro 检验在小样本/大样本下的局限</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 1.5×IQR 规则标记离群值并保留它们</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出 log 变换适用的数据类型与报告注意事项</span></label></li>
+        <li><label><input type="checkbox"><span>我知道「先看结果再删离群值」为什么是 p 值钓鱼</span></label></li>
+        <li><label><input type="checkbox"><span>我的分布图同时显示形状、n 与离群值标记</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch10">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：描述统计与分布",
+          "questions": [
+            { "type": "mcq", "q": "一组数据均值 168.3、中位数 171.1，最可能说明？",
+              "options": ["分布对称", "左偏（左尾被小值拉低）", "右偏", "计算错误"], "answer": 1,
+              "explain": "均值被小值拉低 → 均值 < 中位数 → 左偏。本数据 high 组含 118 g 个体。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "Shapiro 检验 p < 0.05 就必须做 log 变换。",
+              "answer": false,
+              "explain": "检验显著只说明「偏离可检测」，不等于「偏离影响检验」。要看幅度、图与设计；变换先于结果决定。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "1.5×IQR 规则的下界是？",
+              "options": ["Q1 − 1.5×IQR", "Q3 + 1.5×IQR", "mean − 1.5×SD", "min − 1.5×range"], "answer": 0,
+              "explain": "下界 Q1−1.5×IQR、上界 Q3+1.5×IQR；箱线图须线同源。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "发现 3 个离群值，正确处置是？",
+              "options": ["直接删除", "标记 + 报告 + 保留；必要时做敏感性分析", "把值改成均值", "换一个数据集"], "answer": 1,
+              "explain": "删除只在有测量错误证据时允许；标记与敏感性分析是标准做法。", "skill": "repro", "difficulty": 1 },
+            { "type": "fill", "q": "计算分位数时跳过缺失：quantile(x, c(.25,.75), na.rm = ____)。",
+              "answer": ["TRUE"], "explain": "na.rm = TRUE 跳过 NA；但要先决定缺失的处置并记录。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "n 越大，Shapiro 检验越容易因微小偏离而显著。",
+              "answer": true,
+              "explain": "检验随 n 变敏感；大样本时几乎必然拒绝。正态性判断应以图与影响为主。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：计算 IQR。",
+              "code": "____(pika$body_mass_g)",
+              "blanks": [ { "answer": ["IQR"] } ],
+              "explain": "IQR() = Q3 − Q1，是箱体高度。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "log 后报告的均值 5.10，正确写法是？",
+              "options": ["直接写 5.10 g/L", "标注 log 尺度或 back-transform 后报告", "四舍五入成 5", "删掉 log 结果"], "answer": 1,
+              "explain": "变换后的单位变了；要么写「log(g/L)」，要么换回原尺度并在方法里说明。", "skill": "repro", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 R/ 与 figures/；决定写进脚本注释。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>02_descriptive.R</code></td><td>描述统计 + 离群值规则 + 变换决定</td><td>ch11 检验前提判断</td></tr>
+            <tr><td><code>fig_distributions.svg</code></td><td>分布面板（A 直方图/密度，B 箱线+标记）</td><td>ch14 论文图集</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：分布与前提已经清楚，第 11 章据此在 t 检验与 Wilcoxon 之间做选择，并报告效应量与 CI。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+          <a class="btn" href="../cheatsheets.html#figure-qc">速查：图形质检</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

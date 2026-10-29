@@ -1,0 +1,4 @@
+comparison,estimate,conf_low,conf_high,p_value
+mass ~ sex (Welch),-8.6,-17.2,-0.1,0.0479
+mass ~ sex (Cohen's d),-0.52,-1.04,-0.01,NA
+control T0 vs T28 (paired),2.5,-5.3,10.4,0.446

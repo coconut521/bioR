@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 9 章 出版级图形：配色、排版、导出与图注 | bioR</title>
+<meta name="description" content="把探索图升级为期刊 Figure 1：统一 Okabe–Ito 配色、theme 细节、patchwork 拼图与 A/B 标签、183 mm PDF 导出、能独立读懂的英文图注。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch09" data-part="II">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 9 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 09 · PUBLICATION FIGURES</span><span>STAGE II · EXPLORE</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">09</div>
+          <div class="cover-copy">
+            <h1>出版级图形：配色、排版、导出与图注</h1>
+            <p class="cover-lede">能看 ≠ 能投。单栏 89 mm、字号 7–9 pt、色盲友好、图注独立可读——这一章把探索图升级成 Figure 1。</p>
+            <p class="cover-question"><b>本章科研问题：</b>怎样把三张探索图拼成一张符合期刊规格、能独立读懂的 Figure 1？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch08</span><span>数据 pika_physiology.csv · Table 1</span><span>交付 Figure1.pdf · figure1_legend.md</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>theme()</code> 把默认主题调成期刊规格（字号、网格、留白）。</li>
+          <li>用一套 Okabe–Ito 配色贯穿所有面板，并提供形状/线型冗余编码。</li>
+          <li>用 <code>patchwork</code> 拼双面板并加 A/B 面板标签。</li>
+          <li>按双栏 183 mm、<code>cairo_pdf</code> 导出矢量 PDF。</li>
+          <li>写出含 n、统计、误差与软件版本的英文图注。</li>
+          <li>说清「图注必须能独立读懂」意味着哪些信息不能省。</li>
+        </ul>
+        <p class="small muted">前置：第 8 章；数据：<code>pika_physiology.csv</code>、ch06 Table 1；交付：<code>Figure1.pdf</code>、<code>figure1_legend.md</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>导师把两张图并排放进投稿附件，编辑部退回三条意见：<b>字号太小、配色不友好、图注看不懂</b>。这三条都不是「审美」——它们是可读性规格。这一章把 Figure 1 当成一件<b>工程交付物</b>：尺寸、字体、颜色、标签、图注逐项验收。</p>
+      </div>
+
+      <h2>1. 主题与字号：把默认图变成期刊图</h2>
+      <p><code>theme()</code> 是图的「排版层」：字号、网格、边距、图例位置。期刊图的原则：正文 7–9 pt、去掉不必要的网格、留白均匀。<code>theme_bw()</code> / <code>theme_classic()</code> 是起点，再用 <code>theme()</code> 改细节。</p>
+
+      <article class="example-card" id="ch09-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：theme_bw + 三处细节调整</h3>
+          <div class="ex-meta"><span class="tag">theme</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch09-ex-01"><code class="r">library(readr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+p &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  labs(x = NULL, y = "Body mass (g)") +
+  theme_bw(base_size = 9) +
+  theme(panel.grid.minor = element_blank(),
+        strip.background = element_blank())
+class(p$theme)
+p$theme$text$size</code></pre>
+        <div class="ex-output" data-output-for="ch09-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "theme"          "ggplot2::theme" "gg"             "S7_object"     
+[1] 9</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6 行</b>：<code>theme_bw(base_size = 9)</code> 一次设定全图基准字号。</li>
+            <li><b>第 7–8 行</b>：两处细节：去掉次网格线、去掉分面标题底色。细节按需加，别一次写二十行。</li>
+            <li><b>第 9–10 行</b>：确认主题对象与基准字号——9 pt 在 89 mm 单栏上可读。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>在 RStudio 大窗口里看着舒服就导出：窗口 1200 px 宽、终稿 89 mm，字号缩到原来的 1/4。定图先定<b>物理尺寸</b>，再调字号。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 3, "vars": { "p": "ggplot" }, "out": "", "note": "箱线图 + 9 pt 主题", "dataframe": null },
+          { "line": 9, "vars": { "p": "ggplot" }, "out": "theme …", "note": "主题对象", "dataframe": null },
+          { "line": 10, "vars": { "p": "ggplot" }, "out": "[1] 9", "note": "基准字号 9 pt", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>2. 一套配色：让所有面板说同一种语言</h2>
+      <p>配色不是装饰，是编码系统。三条纪律：<b>色盲安全</b>（Okabe–Ito / viridis）、<b>全图一致</b>（同一组永远是同一个颜色）、<b>冗余编码</b>（颜色之外再加形状或线型）。</p>
+
+      <article class="example-card" id="ch09-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：有序因子与色板的对应</h3>
+          <div class="ex-meta"><span class="tag">scale_fill_manual</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch09-ex-02"><code class="r">library(readr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika &lt;- pika |&gt;
+  dplyr::mutate(altitude_group = factor(altitude_group,
+                                        levels = c("low", "mid", "high")))
+levels(pika$altitude_group)
+pal &lt;- c(low = "#56B4E9", mid = "#E69F00", high = "#0072B2")
+scale_fill_manual(values = pal)$palette(3)</code></pre>
+        <div class="ex-output" data-output-for="ch09-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "low"  "mid"  "high"
+      low       mid      high 
+"#56B4E9" "#E69F00" "#0072B2" </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–6 行</b>：先把海拔组设为<b>有序</b>因子——图例顺序、色板对应都跟着它走。</li>
+            <li><b>第 7 行</b>：low → mid → high。</li>
+            <li><b>第 8–9 行</b>：命名向量把颜色绑到水平上；<code>palette(3)</code> 按水平顺序返回三色。命名而不是位置绑定——水平换序也不会错色。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>用位置向量 <code>values = c("#56B4E9", "#E69F00", "#0072B2")</code> 并以为「颜色对上了」——一旦某组无数据、或水平顺序变化，颜色就错位。<b>永远用具名向量。</b></p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "low mid high", "note": "有序因子", "dataframe": null },
+          { "line": 9, "vars": { "pal": "chr[3]" }, "out": "#56B4E9 #E69F00 #0072B2", "note": "命名色板按水平取色", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 拼 Figure 1：patchwork 与面板标签</h2>
+      <p><code>patchwork</code> 用 <code>+</code> / <code>|</code> 拼图：两个 ggplot 相加就是一张组合图，<code>plot_annotation(tag_levels = "A")</code> 自动加 A/B 标签。投稿图的面板标签是硬要求——审稿人靠它写信。</p>
+
+      <article class="example-card" id="ch09-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：两块面板拼成一张图</h3>
+          <div class="ex-meta"><span class="tag">patchwork</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch09-ex-03"><code class="r">library(readr); library(ggplot2); library(patchwork)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika$altitude_group &lt;- factor(pika$altitude_group,
+                              levels = c("low", "mid", "high"))
+panel_a &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  theme_classic(base_size = 8)
+panel_b &lt;- ggplot(pika[!is.na(pika$hemoglobin_g_l), ],
+                  aes(altitude_m, hemoglobin_g_l, colour = sex)) +
+  geom_point(size = 1.2) +
+  theme_classic(base_size = 8)
+fig &lt;- wrap_plots(panel_a, panel_b, nrow = 1) +
+  plot_annotation(tag_levels = "A")
+class(fig)</code></pre>
+        <div class="ex-output" data-output-for="ch09-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "patchwork"       "ggplot2::ggplot" "ggplot"          "ggplot2::gg"    
+[5] "S7_object"       "gg"             </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6–13 行</b>：两块面板各自完整（自己的 data/aes/geom/theme），字号同为 8 pt。</li>
+            <li><b>第 14–15 行</b>：<code>wrap_plots(nrow = 1)</code> 并排；<code>tag_levels = "A"</code> 生成 A、B。</li>
+            <li><b>第 16 行</b>：<code>class(fig)</code> 是 patchwork 对象——它仍然是 ggplot 家族，可以继续 <code>&amp; theme()</code> 统一改主题。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>两块面板用了不同色板/字号，拼起来像两张图硬贴在一起。<b>先统一，再拼。</b>拼图不是 PS，是同一套代码的输出。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 6, "vars": { "panel_a": "ggplot" }, "out": "", "note": "面板 A：分布", "dataframe": null },
+          { "line": 14, "vars": { "fig": "patchwork" }, "out": "", "note": "并排拼图 + A/B 标签", "dataframe": null },
+          { "line": 16, "vars": { "fig": "patchwork" }, "out": "patchwork …", "note": "仍是 ggplot 家族", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch09-figure1">
+        <div class="plot-stage-head">
+          <span>图 9.1 · Figure 1 成稿（A/B 双面板）</span>
+          <a href="../assets/figures/chapters/ch09-figure1.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch09-figure1.svg"
+               alt="双面板组合图：A 面板为体重按海拔组的箱线图叠加个体点，B 面板为血红蛋白对海拔的散点图并按性别配色与形状；两个面板左上角分别有加粗标签 A 与 B，共享一套色板。"
+               width="1200" height="688">
+        </div>
+        <figcaption>图 9.1 · Figure 1 的成稿：A 体重分布（n = 20/组），B 血红蛋白 × 海拔（n = 58，按性别）；双栏 183 mm，面板标签 A/B；误差与统计说明见图注模板。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch09_figure1.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <div class="explainer" data-engine="anatomy">
+        <script type="application/json" class="explainer-data">{
+          "question": "一张投稿图由哪些部件组成？",
+          "frames": [
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "Figure 1 的面板标签 A 与 B",
+              "box": [1.5, 4.5, 4.5, 7],
+              "note": "面板标签 A：审稿人靠它引用「Figure 1A」。patchwork 的 plot_annotation(tag_levels = \"A\") 自动生成，字号加粗。" },
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "A 面板的 y 轴与单位",
+              "box": [1.5, 13, 10, 70],
+              "note": "轴与单位：每个轴都有名称与单位（Body mass (g)）。单位缺失的图在审稿意见里排第一。" },
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "A 面板的个体点与箱体",
+              "box": [8, 20, 43, 60],
+              "note": "个体点 + 箱体：小 n 必须显示分布。箱体=IQR、横线=中位数、须=1.5×IQR——这些定义写进图注，不靠读者猜。" },
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "B 面板的图例",
+              "box": [89.5, 42, 9.5, 12],
+              "note": "图例：颜色 + 形状双编码（色盲安全），标题写变量名（Sex）。图例不是装饰，是编码的说明书。" },
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "B 面板的拟合线",
+              "box": [54, 33, 35, 45],
+              "note": "拟合线：方法（OLS）与用途（仅示趋势）写进图注；采样海拔只有 3 个点，直线不代表连续预测。" },
+            { "src": "../assets/figures/chapters/ch09-figure1.svg",
+              "alt": "两个面板的整体配色",
+              "box": [0, 0, 100, 100],
+              "note": "整体：两面板共享一套 Okabe–Ito 色板与 8 pt 字号；拼图前先统一，拼完才能像「一张图」。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>4. 导出：183 mm、cairo_pdf、矢量</h2>
+      <p>导出规格由期刊决定：单栏 89 mm、双栏 183 mm、PDF/SVG 矢量、字体嵌入。<code>cairo_pdf</code> 会把字体嵌进 PDF——这是「编辑部打开不跑版」的前提。</p>
+
+      <article class="example-card" id="ch09-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：导出 183 × 105 mm 的 PDF</h3>
+          <div class="ex-meta"><span class="tag">ggsave · cairo_pdf</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch09-ex-04"><code class="r">library(readr); library(ggplot2); library(patchwork); library(svglite)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika$altitude_group &lt;- factor(pika$altitude_group,
+                              levels = c("low", "mid", "high"))
+panel_a &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  scale_fill_manual(values = c(low = "#56B4E9", mid = "#E69F00",
+                               high = "#0072B2"), guide = "none") +
+  labs(x = NULL, y = "Body mass (g)") +
+  theme_classic(base_size = 8)
+panel_b &lt;- ggplot(pika[!is.na(pika$hemoglobin_g_l), ],
+                  aes(altitude_m, hemoglobin_g_l, colour = sex)) +
+  geom_point(size = 1.2) +
+  labs(x = "Altitude (m)", y = "Haemoglobin (g/L)") +
+  theme_classic(base_size = 8)
+fig &lt;- wrap_plots(panel_a, panel_b, nrow = 1) +
+  plot_annotation(tag_levels = "A")
+dir.create(here::here("figures"), showWarnings = FALSE)
+ggsave(here::here("figures/Figure1.pdf"), fig,
+       width = 183, height = 105, units = "mm",
+       device = cairo_pdf)
+file.exists(here::here("figures/Figure1.pdf"))</code></pre>
+        <div class="ex-output" data-output-for="ch09-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6–17 行</b>：两块面板共用命名色板与 8 pt 字号。</li>
+            <li><b>第 18–19 行</b>：拼图 + A/B 标签。</li>
+            <li><b>第 21–23 行</b>：<code>width = 183</code>、<code>units = "mm"</code>、<code>device = cairo_pdf</code>——双栏宽、字体嵌入。</li>
+            <li><b>第 24 行</b>：<code>TRUE</code> = 文件落盘。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>导出 PNG 交稿（400 dpi 也不满足矢量要求），或忘记 <code>units</code> 得到 183 英寸的巨图。投稿前按期刊 Author Guidelines 核对三项：尺寸、格式、字体。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入 + 有序因子", "dataframe": null },
+          { "line": 18, "vars": { "fig": "patchwork" }, "out": "", "note": "拼图 + A/B", "dataframe": null },
+          { "line": 21, "vars": { "fig": "patchwork" }, "out": "", "note": "183 mm、cairo_pdf 导出", "dataframe": null },
+          { "line": 24, "vars": { "fig": "patchwork" }, "out": "[1] TRUE", "note": "Figure1.pdf 落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>5. 图注：能独立读懂的说明书</h2>
+      <p>图注（figure legend）不是图的标题，是图的<b>自解释文档</b>：n、统计与误差定义、配色含义、软件版本。标准是：把图注单独抽出来，读者也能知道每个面板画了什么、每个点代表什么。</p>
+
+      <article class="example-card" id="ch09-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：写 figure1_legend.md</h3>
+          <div class="ex-meta"><span class="tag">图注模板</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch09-ex-05"><code class="r">library(readr)
+legend &lt;- c(
+  "Figure 1. Body mass and haemoglobin across altitude in plateau pikas.",
+  "(A) Body mass by altitude group (low, mid, high; n = 20 per group). Boxes show the",
+  "interquartile range (IQR) with the median as a horizontal line; whiskers extend to",
+  "1.5 x IQR; individual animals are shown as points.",
+  "(B) Haemoglobin concentration versus sampling altitude (n = 58; two haemolysis",
+  "samples excluded). Sex is encoded by both colour and shape. Lines are ordinary",
+  "least-squares fits shown for trend only; sampling altitudes were 3200, 4100 and",
+  "5000 m.",
+  "Data are simulated teaching data (fixed seed 20261027) and do not represent real",
+  "animals. Colour palette: Okabe-Ito (colour-blind safe)."
+)
+dir.create(here::here("figures"), showWarnings = FALSE)
+writeLines(legend, here::here("figures/figure1_legend.md"))
+length(readLines(here::here("figures/figure1_legend.md")))</code></pre>
+        <div class="ex-output" data-output-for="ch09-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 10</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：标题句——一句话说清这张图是什么。</li>
+            <li><b>A 段</b>：n、箱线图定义（IQR/中位数/须）、点代表个体。</li>
+            <li><b>B 段</b>：n = 58 与剔除原因（溶血）、颜色+形状编码、拟合方法与用途、采样海拔。</li>
+            <li><b>末段</b>：数据性质（模拟、固定种子）与色板——诚实与可复现。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>图注只写「图 1 体重与血红蛋白」——n 没写、误差线含义没写、面板 A/B 没解释。审稿人只能猜；猜错的代价是返修。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 2, "vars": { "legend": "chr[10]" }, "out": "", "note": "10 行图注：标题 + A/B + 数据说明", "dataframe": null },
+          { "line": 15, "vars": { "legend": "chr[10]" }, "out": "", "note": "写入 figures/figure1_legend.md", "dataframe": null },
+          { "line": 16, "vars": { "legend": "chr[10]" }, "out": "[1] 10", "note": "10 行全部落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：Figure1.pdf 与 figure1_legend.md</h2>
+        <p>把本章操作串成 <code>R/09_figure1.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>拼图</b>：A 分布、B 关系（C 交互面板留位）；统一色板与字号；A/B 标签。</li>
+          <li><b>导出</b>：183 × 105 mm、<code>cairo_pdf</code>、文件名 <code>Figure1.pdf</code>。</li>
+          <li><b>图注</b>：英文 legend 含 n、箱线图定义、剔除说明、拟合方法与数据性质。</li>
+          <li><b>自检</b>：把 PDF 缩到 100% 打印——字号 ≥ 7 pt、颜色可辨、面板标签清楚。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>图注单独发给同学，他能说出 A/B 各画什么、n 是多少。</li>
+            <li>PDF 里字体已嵌入（不是「字体缺失」的方块）。</li>
+            <li>两面板同色板：low 永远同一种蓝。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y, : invalid font type</p>
+        <p><b>病因</b>：主题里指定了系统不存在（或未正确注册）的字体族，导出 PDF 时渲染失败。</p>
+        <p><b>修复</b>：用默认字体或 <code>showtext</code>/<code>sysfonts</code> 注册后再用；导出用 <code>cairo_pdf</code>。</p>
+        <p><b>预防</b>：图里只用一种字体族；换机器前先渲染测试。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Warning: Removed 2 rows containing missing values (geom_point).</p>
+        <p><b>病因</b>：血红蛋白的 2 个 NA 进了绘图数据；ggplot 静默移除并警告。</p>
+        <p><b>修复</b>：绘图前显式 <code>filter(!is.na(hemoglobin_g_l))</code>，并在图注写明剔除原因。</p>
+        <p><b>预防</b>：看到 Removed N rows 就当报错处理——数字要能对上（60 → 58）。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Discrete value supplied to continuous scale</p>
+        <p><b>病因</b>：y 或 x 映射到了字符/因子列，却用了连续标度（或反之）。</p>
+        <p><b>修复</b>：核对列类型；因子用离散标度，数值用连续标度。</p>
+        <p><b>预防</b>：画图前 <code>glimpse()</code> 一眼类型（第 3 章的习惯）。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>图注必须能独立读懂。</b>误差线写清是 SD、SEM 还是 95% CI；统计标注写清检验与 p 值；n 写进图注。图注是论文里唯一「图和文字共用的文档」——它错了，图和结论一起错。</p>
+      </div>
+      <div class="repro">
+        <p><code>Figure1.pdf</code> 与 <code>figure1_legend.md</code> 都由 <code>09_figure1.R</code> 生成；改图只改脚本，不在 Illustrator 里手调（手调的部分下次重跑就没了）。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Figure 1 was assembled from two ggplot2 panels with patchwork, using a single colour-blind-safe palette (Okabe–Ito) and a common 8-pt type size; panel tags A and B were added automatically. The figure was exported as a 183-mm-wide vector PDF with embedded fonts, and the legend reports n, box-plot definitions, exclusion reasons and fitting methods.</p>
+        <p class="small muted">中文：Figure 1 由两个 ggplot2 面板经 patchwork 拼合，全图使用同一套色盲安全色板（Okabe–Ito）与 8 pt 字号，并自动添加 A/B 面板标签；以 183 mm 宽矢量 PDF（字体嵌入）导出；图注报告 n、箱线图定义、剔除原因与拟合方法。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>期刊图 = 规格工程：物理尺寸先定（89/183 mm）、字号 7–9 pt、一套命名色板 + 形状冗余、patchwork 拼图加标签、cairo_pdf 导出、图注独立可读。每一步都由脚本生成，可重跑。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch09">
+        <li><label><input type="checkbox"><span>我能按期刊尺寸（89/183 mm）设定图并解释为什么先定尺寸</span></label></li>
+        <li><label><input type="checkbox"><span>我能用命名向量把颜色绑定到因子水平</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 patchwork 拼图并加 A/B 标签</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 cairo_pdf 的作用是嵌入字体</span></label></li>
+        <li><label><input type="checkbox"><span>我能写出含 n、误差定义、剔除原因与软件版本的图注</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出「图注独立可读」的三条硬指标</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch09">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：出版级图形",
+          "questions": [
+            { "type": "mcq", "q": "投稿图的第一步应该定什么？",
+              "options": ["配色", "物理尺寸（单栏/双栏 mm）", "字体", "图例位置"], "answer": 1,
+              "explain": "尺寸决定字号与元素密度；先定 89/183 mm，再调其他。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "配色只需要好看，色盲安全是加分项。",
+              "answer": false,
+              "explain": "色盲安全是可读性底线；Okabe–Ito 或 viridis + 形状/线型冗余编码。", "skill": "stats", "difficulty": 1 },
+            { "type": "mcq", "q": "values = c(low = \"#56B4E9\", mid = \"#E69F00\", high = \"#0072B2\") 的好处是？",
+              "options": ["颜色更亮", "颜色绑定到水平名，换序不错色", "自动色盲安全", "减少图例"], "answer": 1,
+              "explain": "命名向量按水平名取色；位置向量一旦水平顺序变化就错色。", "skill": "syntax", "difficulty": 2 },
+            { "type": "fill", "q": "拼图并自动加 A/B 标签：plot_annotation(tag_levels = \"____\")。",
+              "answer": ["A"], "explain": "tag_levels = \"A\" 生成 A、B、C…；小写 a 则生成 a/b。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "导出 PDF 时用 cairo_pdf 的主要原因是？",
+              "options": ["文件更小", "字体嵌入，避免打开跑版", "支持透明", "颜色更准"], "answer": 1,
+              "explain": "cairo_pdf 嵌入字体；没有嵌入时编辑部机器缺字体会显示方块或替换。", "skill": "repro", "difficulty": 2 },
+            { "type": "mcq", "q": "图注里最不能缺的一组信息是？",
+              "options": ["作者与单位", "n、误差线定义、统计方法", "软件版本", "基金号"], "answer": 1,
+              "explain": "n 决定样本量、误差线决定不确定性含义、统计方法决定结论强度。软件版本也重要但次之。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "ggplot 提示 Removed 2 rows 可以忽略，图照样是对的。",
+              "answer": false,
+              "explain": "被移除的 2 行就是溶血 NA；要在脚本里显式剔除并写进图注，数字必须对得上 60→58。", "skill": "repro", "difficulty": 1 },
+            { "type": "mfill", "q": "补全：两块面板并排拼图。",
+              "code": "fig <- ____(panel_a, panel_b, nrow = 1) + plot_annotation(tag_levels = \"A\")",
+              "blanks": [ { "answer": ["wrap_plots"] } ],
+              "explain": "wrap_plots 把多个 ggplot 组合；+ 用于追加 annotation。", "skill": "syntax", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 figures/；两份文件必须同步更新。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>Figure1.pdf</code></td><td>183 mm 双面板矢量图（A/B）</td><td>ch14 论文包、工作台槽位</td></tr>
+            <tr><td><code>figure1_legend.md</code></td><td>英文图注（n/定义/剔除/方法）</td><td>投稿正文与补充材料</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：图能投了，接下来该回答「差异有多大」——第 10 章从描述统计与分布开始做推断前的最后检查。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#scales-colour">速查：配色与色盲安全</a>
+          <a class="btn" href="../cheatsheets.html#theme-export">速查：主题与导出</a>
+          <a class="btn" href="../cheatsheets.html#figure-qc">速查：图形质检清单</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

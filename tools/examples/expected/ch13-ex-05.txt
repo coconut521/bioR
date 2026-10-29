@@ -1,0 +1,9 @@
+# A tibble: 5 × 5
+  model                     term                estimate conf_low conf_high
+  <chr>                     <chr>                  <dbl>    <dbl>     <dbl>
+1 lm: hb ~ altitude + sex   (Intercept)          95.4     79.7       111.  
+2 lm: hb ~ altitude + sex   altitude_m            0.0163   0.0125      0.02
+3 lm: hb ~ altitude + sex   sexM                  4.58    -0.865      10.0 
+4 lm: log mass ~ log length (Intercept)          -0.322   -3.10        2.46
+5 lm: log mass ~ log length log(body_length_mm)   1.04     0.514       1.57
+[1] TRUE TRUE

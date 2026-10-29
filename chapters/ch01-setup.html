@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 1 章 从零开始：R、RStudio 与可复现项目 | bioR</title>
+<meta name="description" content="建立 pika-hypoxia 可复现分析项目：理解脚本与控制台、对象与赋值、here 相对路径、包版本与 sessionInfo 记录；含 R console、科研任务与交付物。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch01" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 1 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <!-- ======== 1. 封面 ======== -->
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 01 · SETUP &amp; REPRODUCIBLE PROJECTS</span><span>STAGE I · PREPARE DATA</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">01</div>
+          <div class="cover-copy">
+            <h1>从零开始：R、RStudio 与可复现项目</h1>
+            <p class="cover-lede">把第一批体重和血样数据放进一个「双击就能重跑」的项目，而不是散落在桌面的脚本。</p>
+            <p class="cover-question"><b>本章科研问题：</b>同样的数据，换一台电脑还能跑出同样的结果吗？</p>
+            <div class="cover-meta">
+              <span>70 MIN</span><span>前置 无</span><span>数据 pika_physiology.csv（只读）</span><span>交付 00_setup.R · README.md · sessionInfo.txt</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ======== 2. 学习目标 ======== -->
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>建立 <code>pika-hypoxia</code> 项目目录，说出 <code>data-raw/</code> 与 <code>data/</code> 的分工。</li>
+          <li>区分<b>脚本</b>与<b>控制台</b>：知道哪里的代码会被保存、哪里的只是草稿。</li>
+          <li>用 <code>&lt;-</code> 创建对象，并解释为什么 <code>setwd("C:/…")</code> 是合作杀手。</li>
+          <li>用 <code>here::here()</code> 从项目根目录引用文件。</li>
+          <li>用 <code>sessionInfo()</code> 记录 R 与包版本，写进项目 README。</li>
+          <li>读完报错的前两行，定位「缺文件」「缺包」「拼错名」三类问题。</li>
+        </ul>
+        <p class="small muted">前置：无；数据：<code>pika_physiology.csv</code>（只读副本）；交付：见封面。</p>
+      </section>
+
+      <!-- ======== 3. 研究情境 ======== -->
+      <div class="research">
+        <p>课题第一天。导师把 60 只高原鼠兔的体重和血样表发给你：「先把项目建好——目录、原始数据只读、版本记录。下周数据量翻十倍时，我不想看到你的脚本散在桌面上。」这一章不跑任何统计，只搭一个换台电脑也能重跑的分析骨架。</p>
+      </div>
+
+      <!-- ======== 4. 正文 ======== -->
+      <h2>1. RStudio 的四个面板，两条工作区</h2>
+      <p>打开 RStudio，默认看到四个面板：<b>脚本编辑器</b>（左上）写会被保存的代码；<b>控制台</b>（左下）即时执行、适合试探；<b>Environment/History</b>（右上）看当前有哪些对象；<b>Files/Plots/Help</b>（右下）管文件、图和文档。</p>
+      <p>关键习惯只有一条：<b>凡是想留到明天的代码，都写进脚本</b>。控制台里的内容一关就没；脚本按 Ctrl+Enter（macOS：Cmd+Enter）逐行送进控制台执行。</p>
+
+      <h3 class="sr-only">控制台与脚本两条工作区对比</h3>
+      <div class="compare">
+        <div class="compare-col bad">
+          <h4>只在控制台里敲</h4>
+          <pre><code class="r"># 关掉 RStudio 就全部消失
+# 三周后没人（包括你）知道
+# 当时那行正确的代码是什么</code></pre>
+        </div>
+        <div class="compare-col good">
+          <h4>写进脚本，按编号运行</h4>
+          <pre><code class="r"># 00_setup.R → 01_import.R → 02_clean.R
+# 每一步可重跑、可审阅、可交给下一个人</code></pre>
+        </div>
+      </div>
+
+      <h2>2. 对象与赋值：给测量值起名字</h2>
+      <p>R 用 <code>&lt;-</code> 把值存进<b>对象</b>（object）。对象名用小写字母加下划线（<code>snake_case</code>），名字要说明内容而不是类型。</p>
+
+      <article class="example-card" id="ch01-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：创建对象并做一次计算</h3>
+          <div class="ex-meta"><span class="tag">&lt;- 赋值</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-01"><code class="r">n_mice &lt;- 60
+altitude_low_m &lt;- 3200
+n_mice * 2</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 120</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1–2 行</b>：创建两个对象；赋值后控制台<b>没有输出</b>——赋值是「存」，不是「说」。</li>
+            <li><b>第 3 行</b>：直接写对象名或表达式，结果自动打印，前面的 <code>[1]</code> 是行首序号。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>两种赋值号</h4>
+          <p><code>-&gt;</code> 是反向赋值（<code>60 -&gt; n_mice</code>），效果相同但很少用；<code>=</code> 在函数参数里有别的含义（<code>mean(x, na.rm = TRUE)</code>），教学代码统一用 <code>&lt;-</code>。</p>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>对象名拼写即换对象：<code>n_mice</code> 和 <code>N_mice</code> 是两个东西。R 对大小写敏感。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "n_mice": "60" }, "out": "", "note": "赋值不产生输出", "pipeline": null },
+          { "line": 2, "vars": { "n_mice": "60", "altitude_low_m": "3200" }, "out": "", "note": "两个对象就绪", "pipeline": null },
+          { "line": 3, "vars": { "n_mice": "60", "altitude_low_m": "3200" }, "out": "[1] 120", "note": "表达式的值自动打印", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <article class="example-card" id="ch01-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：自动打印与显式打印</h3>
+          <div class="ex-meta"><span class="tag">print()</span><span class="tag">脚本 vs 控制台</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-02"><code class="r">mean_mass_g &lt;- 172.4
+mean_mass_g
+print(mean_mass_g)</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 172.4
+[1] 172.4</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：赋值，无输出。</li>
+            <li><b>第 2 行</b>：在控制台/脚本顶层，单独写对象名会<b>自动打印</b>。</li>
+            <li><b>第 3 行</b>：<code>print()</code> 显式打印；在函数体或 for 循环里自动打印会失效，此时必须用它。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "mean_mass_g": "172.4" }, "out": "", "note": "赋值静默完成", "pipeline": null },
+          { "line": 2, "vars": { "mean_mass_g": "172.4" }, "out": "[1] 172.4", "note": "顶层自动打印", "pipeline": null },
+          { "line": 3, "vars": { "mean_mass_g": "172.4" }, "out": "[1] 172.4", "note": "显式打印，任何环境都有效", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 项目与路径：为什么禁止 setwd</h2>
+      <p>把所有文件放进一个 <b>RStudio Project</b>（File → New Project），项目根目录就是一切路径的起点。绝对路径 <code>setwd("C:/Users/你/Desktop/…")</code> 只在你的电脑上成立；换一台机器、换一个目录，脚本当场断掉。教学代码统一用 <code>here::here()</code>：它从项目根目录出发找文件，与你在哪个目录运行无关。</p>
+
+      <article class="example-card" id="ch01-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：here() 从项目根出发</h3>
+          <div class="ex-meta"><span class="tag">here</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-03"><code class="r">basename(here::here())
+basename(here::here("assets", "data", "pika_physiology.csv"))</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "bioR"
+[1] "pika_physiology.csv"</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：<code>here::here()</code> 返回项目根目录（这里用 <code>basename()</code> 只显示最后一级名字，避免暴露每个人的安装路径）。</li>
+            <li><b>第 2 行</b>：给 <code>here()</code> 传子目录和文件名，拼出根目录之下的路径——在任何电脑上结果都一样。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>setwd()</code> 之后脚本「能在你机器上跑」是假象；换目录、换人立即失效。评审与合作都以相对路径为准。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "root": "bioR" }, "out": "[1] \"bioR\"", "note": "项目根目录名", "pipeline": null },
+          { "line": 2, "vars": { "root": "bioR" }, "out": "[1] \"pika_physiology.csv\"", "note": "根目录下的数据文件", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <p>本章使用的项目骨架如下——原始数据进 <code>data-raw/</code> 且<b>永不修改</b>，清洗后的数据进 <code>data/</code>，函数进 <code>R/</code>，图进 <code>figures/</code>，报告进 <code>reports/</code>：</p>
+
+      <figure class="plot-stage">
+        <div class="plot-stage-head"><span>示意 · pika-hypoxia 项目目录</span></div>
+        <div class="plot-stage-canvas">
+          <svg viewBox="0 0 640 300" width="640" height="300" role="img" style="max-width:100%;height:auto;font-family:var(--bio-mono)">
+            <title>pika-hypoxia 项目的目录结构示意图</title>
+            <desc>项目根目录下含 data-raw、data、R、figures、reports 五个子目录与 00_setup.R、README.md 两个文件；data-raw 标注为只读。</desc>
+            <g fill="none" stroke="var(--bio-rule-strong)" stroke-width="1.2">
+              <rect x="20" y="18" width="180" height="34" rx="6" fill="var(--bio-blue-soft)" stroke="var(--bio-blue)"/>
+              <rect x="60" y="90" width="140" height="30" rx="5" fill="var(--bio-danger-soft)" stroke="var(--bio-danger)"/>
+              <rect x="60" y="136" width="140" height="30" rx="5" fill="var(--bio-surface)"/>
+              <rect x="260" y="90" width="120" height="30" rx="5" fill="var(--bio-surface)"/>
+              <rect x="420" y="90" width="120" height="30" rx="5" fill="var(--bio-surface)"/>
+              <rect x="60" y="182" width="140" height="30" rx="5" fill="var(--bio-surface)"/>
+              <rect x="260" y="182" width="120" height="30" rx="5" fill="var(--bio-surface)"/>
+              <rect x="420" y="182" width="150" height="30" rx="5" fill="var(--bio-surface)"/>
+            </g>
+            <g font-size="13" fill="var(--bio-ink)" text-anchor="middle">
+              <text x="110" y="40" font-weight="bold">pika-hypoxia/</text>
+              <text x="130" y="110" fill="var(--bio-danger)">data-raw/ 只读</text>
+              <text x="130" y="156">data/ 清洗后</text>
+              <text x="320" y="110">R/ 函数</text>
+              <text x="480" y="110">figures/ 图</text>
+              <text x="130" y="202">reports/ 报告</text>
+              <text x="320" y="202">00_setup.R</text>
+              <text x="495" y="202">README.md</text>
+            </g>
+            <g stroke="var(--bio-rule-strong)" stroke-width="1.2" fill="none">
+              <path d="M110 52 V75 H130 V90 M110 75 H320 V90 M110 75 H480 V90 M130 120 V182 M320 120 V182 M480 120 V182"/>
+            </g>
+          </svg>
+        </div>
+        <figcaption>示意 · 原始数据 data-raw/ 永不改写；所有产出都可以从它重跑。目录名用小写加连字符，文件按编号排序。</figcaption>
+      </figure>
+
+      <h2>4. 载入包，读一眼数据</h2>
+      <p><code>library()</code> 把已安装的包挂进当前会话；每次新开 R 都要重新挂。先读入 60 只鼠兔的生理表并用 <code>glimpse()</code> 扫一眼——这是拿到任何数据的第一反应。</p>
+
+      <article class="example-card" id="ch01-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：读入生理表并查看结构</h3>
+          <div class="ex-meta"><span class="tag">readr · dplyr</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-04"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+glimpse(pika)</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">Rows: 60
+Columns: 11
+$ id             &lt;chr&gt; "P001", "P002", "P003", "P004", "P005", "P006", "P007",…
+$ altitude_m     &lt;dbl&gt; 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3…
+$ altitude_group &lt;chr&gt; "low", "low", "low", "low", "low", "low", "low", "low",…
+$ sex            &lt;chr&gt; "F", "F", "F", "F", "F", "F", "F", "F", "F", "F", "M", …
+$ body_mass_g    &lt;dbl&gt; 164.6, 158.1, 156.3, 190.1, 186.4, 162.3, 194.3, 170.9,…
+$ body_length_mm &lt;dbl&gt; 184.3, 187.2, 180.9, 212.3, 203.6, 189.9, 193.1, 192.9,…
+$ hemoglobin_g_l &lt;dbl&gt; 155.6, 157.8, 142.6, 146.0, 140.5, 145.9, 129.1, 153.9,…
+$ hematocrit_pct &lt;dbl&gt; 48.8, 51.2, 48.5, 48.6, 48.4, 47.8, 44.7, 52.2, 50.0, 5…
+# ... (3 more lines; full output: expected/ch01-ex-04.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：挂载两个包；<code>library()</code> 只挂载不安装，安装用 <code>install.packages()</code>，一辈子一次。</li>
+            <li><b>第 2–3 行</b>：读入数据存进对象 <code>pika</code>；<code>show_col_types = FALSE</code> 关闭列规格消息。</li>
+            <li><b>第 4 行</b>：<code>glimpse()</code> 转置打印：每一行是一个变量名 + 类型 + 前几个值，一眼看出 60 行 × 11 列。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <pre><code class="r">str(read.csv(here::here("assets/data/pika_physiology.csv")))</code></pre>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载 readr 与 dplyr", "pipeline": null },
+          { "line": 2, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入 60 行 × 11 列", "pipeline": { "rows": 60, "cols": 11 } },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "Rows: 60 Columns: 11 …", "note": "glimpse 逐列展示类型与样本值", "pipeline": { "rows": 60, "cols": 11 } }
+        ] }</script>
+      </article>
+
+      <div class="data-preview" data-dataset="pika-physiology" data-rows="6"></div>
+
+      <h2>5. 求助与版本记录</h2>
+      <p>查函数用法用 <code>?mean</code>（打开 Help 面板）；看某个参数长什么样用 <code>args()</code>。<b>每次分析都要记录版本</b>：Methods 里写 R 版本，README 里写包版本——审稿人和三个月后的你都靠它重跑。</p>
+
+      <article class="example-card" id="ch01-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：记录 R 与包版本</h3>
+          <div class="ex-meta"><span class="tag">sessionInfo</span><span class="tag blue">可复现</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-05"><code class="r">R.version.string
+packageVersion("readr")</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "R version 4.5.2 (2025-10-31 ucrt)"
+[1] '2.2.0'</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：完整的 R 版本串（含构建日期），直接可写进 Methods。</li>
+            <li><b>第 2 行</b>：单个包的版本；把所有包锁进一个文件是第 14 章 <code>renv</code> 的任务，现在先养成记录习惯。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "[1] \"R version 4.5.2 (2025-10-31 ucrt)\"", "note": "R 版本串", "pipeline": null },
+          { "line": 2, "vars": {}, "out": "[1] '2.2.0'", "note": "readr 包版本", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <article class="example-card" id="ch01-ex-06">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 6：用 args() 快速看函数签名</h3>
+          <div class="ex-meta"><span class="tag">args()</span><span class="tag">求助</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch01-ex-06"><code class="r">args(mean)</code></pre>
+        <div class="ex-output" data-output-for="ch01-ex-06">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">function (x, ...) 
+NULL</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：<code>mean</code> 需要 <code>x</code>，其余交给 <code>...</code>；要知道 <code>na.rm</code> 这类参数，看 <code>?mean</code> 的 Usage 一节。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "function (x, ...) NULL", "note": "函数签名", "pipeline": null }
+        ] }</script>
+      </article>
+
+      <!-- ======== 5. 科研任务 ======== -->
+      <section class="research-task" id="task">
+        <h2>科研任务：搭好 pika-hypoxia 项目</h2>
+        <p>在本地新建一个 RStudio Project，然后按下面的步骤把骨架立起来。完成后你将得到本章的三份交付物。</p>
+        <ol class="task-steps">
+          <li><b>建项目</b>：File → New Project → New Directory，命名 <code>pika-hypoxia</code>；在项目里建 <code>data-raw/ data/ R/ figures/ reports/</code> 五个目录。</li>
+          <li><b>放数据</b>：把 <code>pika_physiology.csv</code> 复制进 <code>data-raw/</code>，文件设为只读；在 README 里写一行「原始数据，禁止修改」。</li>
+          <li><b>写 00_setup.R</b>：载入本章用到的包、用 <code>here::here()</code> 定义数据路径、复制原始数据到 <code>data/</code>。</li>
+          <li><b>记录版本</b>：运行 <code>sessionInfo()</code>，把输出保存为 <code>sessionInfo.txt</code>；README 里写清 R 版本和运行顺序。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>关掉 RStudio，重新打开项目，<code>source("00_setup.R")</code> 一键跑通。</li>
+            <li>全项目搜索不到 <code>setwd</code> 和任何盘符路径。</li>
+            <li>README 能让同门在 10 分钟内跑起你的项目。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ======== 6. 常见错误 ======== -->
+      <h2>常见错误</h2>
+
+      <div class="danger error-card">
+        <p class="error-message">Error: 'assets/data/does_not_exist.csv' does not exist in current working directory ('C:/…/pika-hypoxia')…</p>
+        <p><b>病因</b>：文件名拼错，或文件不在 <code>here::here()</code> 指的位置；报错末尾会告诉你当前工作目录。</p>
+        <p><b>修复</b>：用 <code>list.files(here::here("assets/data"))</code> 看真实文件名，逐字符核对。</p>
+        <p><b>预防</b>：文件名只用小写、连字符和下划线；路径一律从 <code>here::here()</code> 拼出。</p>
+      </div>
+
+      <div class="danger error-card">
+        <p class="error-message">Error in library(notapackage9x) : there is no package called 'notapackage9x'</p>
+        <p><b>病因</b>：包没安装（<code>library()</code> 只挂载），或者名字拼错——报错里的引号里就是它找不到的名字。</p>
+        <p><b>修复</b>：<code>install.packages("真实包名")</code>，装一次即可，之后每次会话只需 <code>library()</code>。</p>
+        <p><b>预防</b>：README 里列出全部依赖及版本。</p>
+      </div>
+
+      <div class="danger error-card">
+        <p class="error-message">Error in ggplot() : could not find function "ggplot"</p>
+        <p><b>病因</b>：函数属于某个包，而那个包没挂载——函数存在，但当前会话看不见它。</p>
+        <p><b>修复</b>：<code>library(ggplot2)</code> 之后再用；或写全名 <code>ggplot2::ggplot()</code>。</p>
+        <p><b>预防</b>：把 <code>library()</code> 集中写在 00_setup.R 的开头。</p>
+      </div>
+
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- ======== 7. 科研判断 ======== -->
+      <div class="stats">
+        <p>先固定分析环境，再谈结果：R 版本、包版本、文件路径三者中任何一个不确定，结果就不可信。版本记录不是行政负担，而是 Methods 的一部分。</p>
+      </div>
+      <div class="repro">
+        <p>原始数据只读是可复现的第一道防线：所有清洗都写成脚本，从 <code>data-raw/</code> 生成 <code>data/</code>。手动在 Excel 里改一个值，整条证据链就断了。</p>
+      </div>
+
+      <!-- ======== 8. 方法学一句话 ======== -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Analyses were conducted in R version 4.5.2; all package versions are recorded in the project repository, and raw data files were kept read-only.</p>
+        <p class="small muted">中文：分析在 R 4.5.2 下完成；全部包版本记录于项目仓库，原始数据保持只读。</p>
+      </blockquote>
+
+      <!-- ======== 9. 小结 ======== -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>可复现项目 = 固定的目录 + 只读的原始数据 + 按编号的脚本 + 记录在案的版本。控制台用来想，脚本用来留。</p>
+      </div>
+
+      <!-- ======== 10. 自测 ======== -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch01">
+        <li><label><input type="checkbox"><span>我能画出 pika-hypoxia 的目录结构并说明每个目录的分工</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释为什么脚本比控制台可靠</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出 <code>&lt;-</code> 与 <code>=</code> 的使用场景</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释 <code>setwd()</code> 在合作中的问题，并改用 <code>here::here()</code></span></label></li>
+        <li><label><input type="checkbox"><span>我会在新会话里挂载包、在 README 里记录版本</span></label></li>
+        <li><label><input type="checkbox"><span>遇到 "does not exist" / "no package called" / "could not find function" 时我知道先查什么</span></label></li>
+      </ul>
+
+      <!-- ======== 11. 测验 ======== -->
+      <section class="quiz" id="quiz" data-source="ch01">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：可复现项目",
+          "questions": [
+            { "type": "mcq", "q": "脚本与控制台的核心区别是？",
+              "options": ["脚本运行更快", "脚本会被保存、可重跑可审阅", "控制台不能用函数", "没有区别"], "answer": 1,
+              "explain": "控制台即敲即跑、关掉就没；脚本按编号保存，是可复现性的载体。", "skill": "repro", "difficulty": 1 },
+            { "type": "mcq", "q": "同事的电脑上你的脚本报 cannot open file，最可能的原因是？",
+              "options": ["R 版本太新", "脚本里有绝对路径或 setwd()", "数据太大", "包太多"], "answer": 1,
+              "explain": "绝对路径只在你机器上成立。用 here::here() 从项目根拼路径，任何机器结果一致。", "skill": "repro", "difficulty": 1 },
+            { "type": "tf", "q": "install.packages() 每次打开 R 都要运行一遍。",
+              "answer": false,
+              "explain": "安装一辈子一次；每次新会话需要的只是 library() 挂载。", "skill": "syntax", "difficulty": 1 },
+            { "type": "fill", "q": "把值存进对象的赋值符号是 ____（两个字符）。",
+              "answer": ["<-"], "explain": "教学代码统一用 <-；= 保留给函数参数。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "报错 there is no package called 'dplyr' 应该先做什么？",
+              "options": ["重装 R", "install.packages(\"dplyr\")", "重启电脑", "删掉脚本"], "answer": 1,
+              "explain": "这是「包未安装」的标准报错；安装一次后每次会话只需 library(dplyr)。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "原始数据应该放在哪个目录、如何对待？",
+              "options": ["data/，随手更新", "data-raw/，只读不改", "桌面，方便", "回收站备份"], "answer": 1,
+              "explain": "data-raw/ 只读、data/ 由脚本生成——这是「从原始数据可重跑」的结构保证。", "skill": "repro", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- ======== 12. 研究日志 ======== -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 pika-hypoxia 项目根目录；README 是给三个月后的你和你的同门看的。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>00_setup.R</code></td><td>包挂载、here 路径、数据就位</td><td>ch02–ch06 每章开头 source 它</td></tr>
+            <tr><td><code>README.md</code></td><td>运行顺序、依赖与版本</td><td>ch14 可复现报告的雏形</td></tr>
+            <tr><td><code>sessionInfo.txt</code></td><td>当前会话的版本快照</td><td>ch14 renv 的起点</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：60 只鼠兔的血红蛋白里有 2 个 NA——向量与数据类型会告诉你为什么缺失不能填 0。</p>
+      </section>
+
+      <!-- ======== 13. 延伸 ======== -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#rstudio-shortcuts">速查：RStudio 快捷键</a>
+          <a class="btn" href="../cheatsheets.html#here-paths">速查：项目路径与 here</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+          <a class="btn" href="../triage.html">代码急救室：路径与包类报错</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+/* ============================================================
+ * tokens.css — bioR design tokens (light + dark)
+ * Source: docs/01-design-system.md §2. The only file allowed to
+ * contain raw colors; every other stylesheet consumes variables.
+ * ============================================================ */
+
+:root {
+  /* paper */
+  --bio-paper:        #f4f0e7;
+  --bio-paper-2:      #ebe3d6;
+  --bio-surface:      #fffdf8;
+  --bio-surface-2:    #f3ecdf;
+
+  /* ink */
+  --bio-ink:          #1b1a17;
+  --bio-ink-2:        #3a352f;
+  --bio-muted:        #73695c;
+
+  /* rules */
+  --bio-rule:         #d7cab8;
+  --bio-rule-strong:  #b5a48d;
+
+  /* brand: R blue */
+  --bio-blue:         #23629e;
+  --bio-blue-2:       #174a7a;
+  --bio-blue-soft:    #e2edf7;
+
+  /* biology: moss green */
+  --bio-green:        #3f6b4f;
+  --bio-green-soft:   #e4efe5;
+
+  /* status */
+  --bio-warn:         #a15c00;
+  --bio-warn-soft:    #f8e9d0;
+  --bio-danger:       #b3261e;
+  --bio-danger-soft:  #f8dedb;
+  --bio-info:         #1f5f8b;
+  --bio-info-soft:    #e2eef6;
+
+  /* code */
+  --bio-code-bg:      #131820;
+  --bio-code-text:    #eef3f8;
+  --bio-code-rule:    #2f3a47;
+  --bio-code-muted:   #98a6b5;
+
+  /* figure stage: fixed light so statistical colors stay accurate in dark mode */
+  --bio-fig-bg:       #fffdf8;
+  --bio-fig-ink:      #1b1a17;
+  --bio-fig-grid:     #d7cab8;
+
+  /* code line highlight: pre-blended OPAQUE colors (no alpha compositing) */
+  --bio-code-current: #1e2b3c;
+  --bio-code-past:    #161c26;
+
+  /* syntax accents (used by highlight-r.js classes) */
+  --bio-tok-fn:       #8ec3f0;
+  --bio-tok-num:      #f2b56b;
+  --bio-tok-str:      #9fd0a4;
+  --bio-tok-cmt:      #7d8b9c;
+  --bio-tok-kw:       #c79de0;
+  --bio-tok-op:       #eef3f8;
+  --bio-tok-null:     #e08a8a;
+
+  /* shape */
+  --bio-radius:       8px;
+  --bio-radius-sm:    5px;
+  --bio-shadow:       0 1px 0 rgba(60, 40, 20, .04), 0 18px 40px rgba(50, 30, 20, .09);
+
+  /* on-brand text (white on R blue in light, deep ink on light blue in dark) */
+  --bio-on-brand:     #ffffff;
+
+  /* fonts */
+  --bio-sans:  system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --bio-serif: "Iowan Old Style", "Palatino Linotype", "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
+  --bio-mono:  "Cascadia Mono", "JetBrains Mono", Consolas, "SFMono-Regular", Menlo, "Courier New", monospace;
+
+  /* spacing scale (4px base) */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+
+  /* layout */
+  --header-h: 64px;
+  --max-read: 780px;
+}
+
+html[data-theme="dark"] {
+  --bio-paper:        #111417;
+  --bio-paper-2:      #181c20;
+  --bio-surface:      #1d2227;
+  --bio-surface-2:    #252c33;
+
+  --bio-ink:          #eef1f4;
+  --bio-ink-2:        #d3d9df;
+  --bio-muted:        #a4adb6;
+
+  --bio-rule:         #343d46;
+  --bio-rule-strong:  #55616d;
+
+  --bio-blue:         #82b6e3;
+  --bio-blue-2:       #a9cff2;
+  --bio-blue-soft:    #142b3f;
+
+  --bio-green:        #6fc28d;
+  --bio-green-soft:   #173226;
+
+  --bio-warn:         #e0a13a;
+  --bio-warn-soft:    #352814;
+  --bio-danger:       #f07a72;
+  --bio-danger-soft:  #351a18;
+  --bio-info:         #7fb8dd;
+  --bio-info-soft:    #142a38;
+
+  --bio-code-bg:      #0e1218;
+  --bio-code-text:    #eef3f8;
+  --bio-code-rule:    #2c3642;
+  --bio-code-muted:   #93a1b0;
+
+  /* figure stage stays light in dark mode (same values) */
+  --bio-fig-bg:       #fffdf8;
+  --bio-fig-ink:      #1b1a17;
+  --bio-fig-grid:     #d7cab8;
+
+  --bio-shadow:       0 1px 0 rgba(0, 0, 0, .35), 0 22px 50px rgba(0, 0, 0, .35);
+
+  --bio-on-brand:     #0d1722;
+
+  /* print grayscale (print.css only) */
+  --bio-print-bg:     #ffffff;
+  --bio-print-ink:    #000000;
+  --bio-print-mid:    #444444;
+  --bio-print-faint:  #666666;
+  --bio-print-line:   #999999;
+  --bio-print-rule:   #bbbbbb;
+}

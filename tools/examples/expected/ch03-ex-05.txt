@@ -1,0 +1,8 @@
+# A tibble: 5 × 6
+  variable       type  unit  missing allowed_range description                  
+  <chr>          <chr> <chr>   <dbl> <chr>         <chr>                        
+1 id             chr   -           0 P001-P060     individual id; one row = one…
+2 altitude_group fct   -           0 low<mid<high  ordered altitude factor      
+3 sex            fct   -           0 F, M          sex                          
+4 body_mass_g    dbl   g           0 110-240       body mass                    
+5 hemoglobin_g_l dbl   g/L         2 100-260       hemoglobin; NA = hemolysis   

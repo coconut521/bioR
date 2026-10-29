@@ -1,0 +1,4 @@
+# A tibble: 0 × 5
+# ℹ 5 variables: sample_id <chr>, group <chr>, batch <chr>, sex <chr>,
+#   library_size <dbl>
+[1] 12

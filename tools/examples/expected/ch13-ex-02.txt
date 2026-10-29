@@ -1,0 +1,4 @@
+# A tibble: 1 × 4
+  r.squared adj.r.squared sigma   AIC
+      <dbl>         <dbl> <dbl> <dbl>
+1     0.593         0.578  10.3  441.

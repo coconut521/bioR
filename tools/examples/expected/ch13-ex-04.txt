@@ -1,0 +1,5 @@
+# A tibble: 2 × 4
+  term                estimate conf.low conf.high
+  <chr>                  <dbl>    <dbl>     <dbl>
+1 (Intercept)           -0.322   -3.11       2.46
+2 log(body_length_mm)    1.04     0.514      1.57

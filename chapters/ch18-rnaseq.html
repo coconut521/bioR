@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 18 章 转录组差异分析：从 counts 到基因列表 | bioR</title>
+<meta name="description" content="DESeq2 差异表达：设计公式、低表达过滤、shrunken log2FC、FDR 与火山图、KEGG 富集；12 个样本的 group 与 batch 完全混杂，如实报告限制。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch18" data-part="IV">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 18 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 18 · RNA-SEQ DE</span><span>STAGE IV · ADVANCED</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">18</div>
+          <div class="cover-copy">
+            <h1>转录组差异分析：从 counts 到基因列表</h1>
+            <p class="cover-lede">差异分析不是「跑个 DESeq2」。设计公式、低表达过滤、收缩、FDR 与富集背景，每一步都能让基因列表失真。</p>
+            <p class="cover-question"><b>本章科研问题：</b>padj = 0.01 但 log2FC 只有 0.3，算不算生物学上有意义？</p>
+            <div class="cover-meta">
+              <span>150–180 MIN</span><span>前置 ch17 · ch13</span><span>数据 counts 2000×12</span><span>交付 de_results.csv · fig_volcano.svg · fig_enrichment.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>DESeqDataSetFromMatrix()</code> 建立 counts 与样本表的对象。</li>
+          <li>理解设计公式：为什么本数据不能写 <code>~ batch + group</code>。</li>
+          <li>用 <code>lfcShrink()</code> 收缩 log2FC，读 FDR 与效应量。</li>
+          <li>画火山图，按 padj 与 |log2FC| 双阈值筛选基因。</li>
+          <li>做富集并正确解释「无显著通路」；知道背景基因集与 ID 版本的重要性。</li>
+        </ul>
+        <p class="small muted">前置：第 17、13 章；数据：counts、clean metadata、annotation；交付：<code>de_results.csv</code>、<code>fig_volcano.svg</code>、<code>fig_enrichment.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>低氧 vs 对照，6 vs 6。设计表里 group 与 batch 完全重合：对照全在 batch1、低氧全在 batch2。因此 <code>~ batch + group</code> 的模型矩阵不满秩，DESeq2 会直接报错；唯一能拟合的是 <code>~ group</code>，但结论必须写明「处理/批次混合效应」。</p>
+      </div>
+
+      <h2>1. 设计先于模型：不满秩的设计</h2>
+      <p>先看交叉表：control 6 个全在 batch1，hypoxia 6 个全在 batch2。<b>完全混杂</b>意味着「处理效应」与「批次效应」在数学上无法分离；这不是代码问题，是设计问题。</p>
+
+      <article class="example-card" id="ch18-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：分组 × 批次交叉表</h3>
+          <div class="ex-meta"><span class="tag">table</span><span class="tag amber">混杂检查</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch18-ex-01"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+ct &lt;- table(group = meta$group, batch = meta$batch)
+data.frame(
+  group = rownames(ct),
+  batch1 = as.integer(ct[, "batch1"]),
+  batch2 = as.integer(ct[, "batch2"])
+)
+c(genes = nrow(counts), samples = ncol(as.matrix(counts[, meta$sample_id])))</code></pre>
+        <div class="ex-output" data-output-for="ch18-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch18-ex-01">    group batch1 batch2
+1 control      6      0
+2 hypoxia      0      6
+  genes samples 
+   2000      12 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>control: 6/0</b>、<b>hypoxia: 0/6</b>：两组的批次完全分开。</li>
+            <li><b>2000 基因 × 12 样本</b>：列按样本表顺序取，避免错位。</li>
+            <li><b>能写什么模型</b>：只能 <code>~ group</code>；写 <code>~ batch + group</code> 会因为共线而不满秩。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>看到 batch 列就无脑加进 design。设计矩阵不是「变量越多越好」；共线的变量会让模型无法估计。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 4, "vars": { "counts": "2000 × 12" }, "out": "", "note": "读入 counts 与样本表", "dataframe": null },
+          { "line": 8, "vars": { "ct": "table" }, "out": "", "note": "交叉表检查 group × batch", "dataframe": null },
+          { "line": 9, "vars": {}, "out": "control 6/0；hypoxia 0/6", "note": "组与批次完全重合", "dataframe": null },
+          { "line": 14, "vars": {}, "out": "2000 genes × 12 samples", "note": "只能拟合 ~ group，并写明混杂限制", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>2. DESeq2：过滤、归一化、负二项模型</h2>
+      <p>先过滤低表达基因，再用负二项模型估计处理效应。<code>results()</code> 输出 log2FC、SE、pvalue 与 padj；padj 是 BH 校正后的 FDR，基因列表以它为准。</p>
+
+      <article class="example-card" id="ch18-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：DESeq 与结果计数</h3>
+          <div class="ex-meta"><span class="tag">DESeq2</span><span class="tag green">主分析</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch18-ex-02"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(DESeq2)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+dds &lt;- suppressMessages(suppressWarnings(DESeqDataSetFromMatrix(mat, meta, ~ group)))
+dds &lt;- dds[rowSums(counts(dds) &gt;= 10) &gt;= 6, ]
+dds &lt;- suppressMessages(DESeq(dds))
+res &lt;- results(dds, contrast = c("group", "hypoxia", "control"))
+data.frame(
+  tested = sum(!is.na(res$padj)),
+  padj_0.05 = sum(res$padj &lt; 0.05, na.rm = TRUE),
+  up = sum(res$padj &lt; 0.05 &amp; res$log2FoldChange &gt; 1, na.rm = TRUE),
+  down = sum(res$padj &lt; 0.05 &amp; res$log2FoldChange &lt; -1, na.rm = TRUE)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch18-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch18-ex-02">  tested padj_0.05 up down
+1   1995        74 65    7</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>1995 个可检验基因</b>：5 个因全零或低表达被过滤。</li>
+            <li><b>74 个 padj &lt; 0.05</b>：统计显著；但还要看效应量与方向。</li>
+            <li><b>65 上调 / 7 下调</b>（未收缩 log2FC）：初步列表；收缩后数量会变（见下）。</li>
+            <li><b>设计只有 group</b>：不能把 74 个基因全部归因于低氧；批次同样可能造成。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>用 <code>pvalue</code> 而不是 <code>padj</code> 选基因；或不看 log2FC 方向与大小，只按 p 排序。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 9, "vars": { "dds": "DESeqDataSet" }, "out": "", "note": "按 ~ group 建立 DESeq2 对象", "dataframe": null },
+          { "line": 10, "vars": {}, "out": "", "note": "过滤在至少 6 个样本中 counts ≥ 10 的基因", "dataframe": null },
+          { "line": 12, "vars": { "res": "results" }, "out": "", "note": "提取 hypoxia vs control 的结果", "dataframe": null },
+          { "line": 13, "vars": {}, "out": "tested 1995；padj<0.05 74；up 65；down 7", "note": "padj 是列表标准，效应量另看", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="pipeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "从 counts 到基因列表，经过了哪些关？",
+          "frames": [
+            { "stages": [
+              { "label": "counts", "rows": 2000, "cols": 12 },
+              { "label": "过滤低表达", "rows": 1995, "cols": 12 },
+              { "label": "归一化", "rows": 1995, "cols": 12 },
+              { "label": "负二项模型", "rows": 1995, "cols": 2 },
+              { "label": "shrink LFC", "rows": 1995, "cols": 2 },
+              { "label": "FDR", "rows": 1995, "cols": 2 },
+              { "label": "基因列表", "rows": 54, "cols": 1 }
+            ], "active": 0, "note": "原始 counts 只有 2000×12；过滤掉 5 个不可检验基因后进入模型。" },
+            { "stages": [
+              { "label": "counts", "rows": 2000, "cols": 12 },
+              { "label": "过滤低表达", "rows": 1995, "cols": 12 },
+              { "label": "归一化", "rows": 1995, "cols": 12 },
+              { "label": "负二项模型", "rows": 1995, "cols": 2 },
+              { "label": "shrink LFC", "rows": 1995, "cols": 2 },
+              { "label": "FDR", "rows": 1995, "cols": 2 },
+              { "label": "基因列表", "rows": 54, "cols": 1 }
+            ], "active": 3, "note": "design ~ group：batch 与 group 完全重合，模型无法同时估计两者。" },
+            { "stages": [
+              { "label": "counts", "rows": 2000, "cols": 12 },
+              { "label": "过滤低表达", "rows": 1995, "cols": 12 },
+              { "label": "归一化", "rows": 1995, "cols": 12 },
+              { "label": "负二项模型", "rows": 1995, "cols": 2 },
+              { "label": "shrink LFC", "rows": 1995, "cols": 2 },
+              { "label": "FDR", "rows": 1995, "cols": 2 },
+              { "label": "基因列表", "rows": 54, "cols": 1 }
+            ], "active": 6, "note": "padj<0.05 且 |log2FC|>1：收缩后 49 上调 + 5 下调 = 54 个；不是 74 个名义显著。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>3. 收缩与火山图：效应量比 p 更重要</h2>
+      <p><code>lfcShrink()</code>（apeglm）把噪声大的 log2FC 向 0 收缩，尤其保护低表达基因。火山图同时展示效应量与 FDR；双阈值（padj &lt; 0.05 且 |log2FC| &gt; 1）是常用但需要理由的规则。</p>
+
+      <figure class="plot-stage" data-figure="ch18-volcano">
+        <div class="plot-stage-head">
+          <span>图 18.1 · 差异表达火山图</span>
+          <a href="../assets/figures/chapters/ch18-volcano.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch18-volcano.svg"
+               alt="火山图显示收缩后的 log2 倍数变化与 -log10(padj)：灰色六边形为非显著基因的二维密度分箱；49 个基因满足 padj&lt;0.05 且 log2FC&gt;1（橙色点），5 个满足 log2FC&lt;-1（蓝色点）。"
+               width="712" height="560">
+        </div>
+        <figcaption>图 18.1 · 差异表达火山图（apeglm 收缩）；n = 12 个样本、1995 个可检验基因；灰色六边形为非显著基因的二维密度分箱；阈值 padj &lt; 0.05 且 |log2FC| &gt; 1；上调 49 个、下调 5 个；group 与 batch 完全重合，差异不能单独归因于低氧。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch18_volcano.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <article class="example-card" id="ch18-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：apeglm 收缩与 fig_volcano.svg</h3>
+          <div class="ex-meta"><span class="tag">lfcShrink</span><span class="tag green">交付物</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch18-ex-03"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(DESeq2)
+  library(apeglm); library(ggplot2)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+dds &lt;- suppressMessages(suppressWarnings(DESeqDataSetFromMatrix(mat, meta, ~ group)))
+dds &lt;- dds[rowSums(counts(dds) &gt;= 10) &gt;= 6, ]
+dds &lt;- suppressMessages(DESeq(dds))
+res &lt;- suppressMessages(lfcShrink(dds, coef = "group_hypoxia_vs_control", type = "apeglm"))
+df &lt;- as.data.frame(res) |&gt;
+  rownames_to_column("gene_id")
+df$sig &lt;- ifelse(is.na(df$padj) | df$padj &gt;= 0.05 | abs(df$log2FoldChange) &lt;= 1, "ns",
+                 ifelse(df$log2FoldChange &gt; 1, "up", "down"))
+p &lt;- ggplot(df, aes(log2FoldChange, -log10(padj), colour = sig)) +
+  geom_point(size = .7, alpha = .7, na.rm = TRUE) +
+  scale_colour_manual(values = c(up = "#D55E00", down = "#0072B2", ns = "#B5A48D")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", linewidth = .3) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", linewidth = .3) +
+  labs(x = "shrunken log2 fold change", y = "-log10(padj)", colour = "FDR + LFC") +
+  theme_classic(base_size = 9)
+dir.create(here::here("figures"), showWarnings = FALSE)
+ggsave(here::here("figures/fig_volcano.svg"), p, width = 89, height = 70, units = "mm")
+data.frame(
+  file = "figures/fig_volcano.svg",
+  exists = file.exists(here::here("figures/fig_volcano.svg")),
+  up = sum(df$sig == "up"), down = sum(df$sig == "down"), ns = sum(df$sig == "ns")
+)</code></pre>
+        <div class="ex-output" data-output-for="ch18-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch18-ex-03">                     file exists up down   ns
+1 figures/fig_volcano.svg   TRUE 49    5 1942</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>收缩后 49 上调 / 5 下调</b>：比未收缩的 65/7 少——低表达、噪声大的 LFC 被拉回 0。</li>
+            <li><b>阈值双条件</b>：padj &lt; 0.05 且 |log2FC| &gt; 1；单看 p 会把微小变化也算进去。</li>
+            <li><b>火山图图注</b>：写 n、阈值、方向计数与混杂限制。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>用未收缩的 log2FC 画火山图并宣称「大幅上调」；低表达基因的 LFC 噪声极大。收缩后再报告。</p>
+        </div>
+      </article>
+
+      <h2>4. 富集：先问背景，再问通路</h2>
+      <p>富集把基因列表映射到通路。背景必须是「实际检测到的基因」，ID 版本必须与注释一致。富集结果只是假设：本数据的 72 个差异基因没有一条 KEGG 通路通过 FDR。</p>
+
+      <figure class="plot-stage" data-figure="ch18-enrichment">
+        <div class="plot-stage-head">
+          <span>图 18.2 · KEGG 富集（无显著通路）</span>
+          <a href="../assets/figures/chapters/ch18-enrichment.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch18-enrichment.svg"
+               alt="KEGG 过表达富集气泡图：氧化磷酸化、糖酵解、吞噬体等通路的基因比例与基因数；所有通路的 p.adjust 均在 0.8 以上，没有通路通过 FDR 0.05。"
+               width="960" height="640">
+        </div>
+        <figcaption>图 18.2 · KEGG 过表达富集（自定义 TERM2GENE）；n = 72 个差异基因；点大小为基因数、颜色为 p.adjust；本数据中最小 p.adjust 约 0.82，没有任何通路通过 FDR 0.05——如实报告「无显著富集」，不强行解释。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch18_enrichment.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <article class="example-card" id="ch18-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：clusterProfiler enricher</h3>
+          <div class="ex-meta"><span class="tag">clusterProfiler</span><span class="tag amber">结果为空</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch18-ex-04"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tidyr); library(tibble); library(DESeq2)
+  library(clusterProfiler)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+ann &lt;- read_csv(here::here("assets/data/pika_annotation.csv"), show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+dds &lt;- suppressMessages(suppressWarnings(DESeqDataSetFromMatrix(mat, meta, ~ group)))
+dds &lt;- dds[rowSums(counts(dds) &gt;= 10) &gt;= 6, ]
+dds &lt;- suppressMessages(DESeq(dds))
+res &lt;- results(dds, contrast = c("group", "hypoxia", "control"))
+genes &lt;- rownames(res)[!is.na(res$padj) &amp; res$padj &lt; 0.05 &amp; abs(res$log2FoldChange) &gt; 1]
+t2g &lt;- ann |&gt;
+  select(kegg_pathway, gene_id) |&gt;
+  separate_rows(kegg_pathway, sep = ";") |&gt;
+  filter(!is.na(kegg_pathway), kegg_pathway != "")
+en &lt;- enricher(genes, TERM2GENE = t2g, universe = rownames(dds),
+               pvalueCutoff = 1, qvalueCutoff = 1)
+out &lt;- as.data.frame(en)
+data.frame(
+  term = out$ID[1:4],
+  ratio = out$GeneRatio[1:4],
+  p_adjust = signif(out$p.adjust[1:4], 3)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch18-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch18-ex-04">                                  term ratio p_adjust
+1    ko00190 oxidative phosphorylation 12/72    0.821
+2 ko00010 glycolysis / gluconeogenesis 11/72    0.821
+3                    ko04145 phagosome 10/72    0.821
+4 ko04610 NF-kappa B signaling pathway  9/72    0.836</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>72 个差异基因</b>（未收缩阈值）进入富集；背景是 1996 个可检验基因。</li>
+            <li><b>TERM2GENE 顺序</b>：第一列 term、第二列 gene；反过来会「没有基因能映射」。</li>
+            <li><b>p.adjust 全在 0.82 以上</b>：没有显著富集；正确结论是「未发现通路证据」。</li>
+            <li><b>不要强行解释</b>：把 nominal p 最小的通路写成「富集」是常见的过度解读。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>背景用全基因组而不是实际检测基因；或基因 ID 与注释版本不匹配，导致一半基因映射失败却不检查。</p>
+        </div>
+      </article>
+
+      <h2>5. 交付：结果表、火山图与富集图</h2>
+      <p>交付三件：完整 DE 结果表（所有可检验基因）、火山图、富集图。图注与报告必须写清 design、阈值、FDR 方法与混杂限制。</p>
+
+      <article class="example-card" id="ch18-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：de_results.csv + fig_enrichment.svg</h3>
+          <div class="ex-meta"><span class="tag">交付物</span><span class="tag green">可复现</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch18-ex-05"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tidyr); library(tibble); library(DESeq2)
+  library(apeglm); library(clusterProfiler); library(ggplot2)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+ann &lt;- read_csv(here::here("assets/data/pika_annotation.csv"), show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+dds &lt;- suppressMessages(suppressWarnings(DESeqDataSetFromMatrix(mat, meta, ~ group)))
+dds &lt;- dds[rowSums(counts(dds) &gt;= 10) &gt;= 6, ]
+dds &lt;- suppressMessages(DESeq(dds))
+res &lt;- suppressMessages(lfcShrink(dds, coef = "group_hypoxia_vs_control", type = "apeglm"))
+de &lt;- as.data.frame(res) |&gt;
+  rownames_to_column("gene_id") |&gt;
+  left_join(select(ann, gene_id, symbol), by = "gene_id") |&gt;
+  arrange(padj)
+dir.create(here::here("data"), showWarnings = FALSE)
+dir.create(here::here("figures"), showWarnings = FALSE)
+write_csv(de, here::here("data/de_results.csv"))
+genes &lt;- de$gene_id[!is.na(de$padj) &amp; de$padj &lt; 0.05 &amp; abs(de$log2FoldChange) &gt; 1]
+t2g &lt;- ann |&gt;
+  select(kegg_pathway, gene_id) |&gt;
+  separate_rows(kegg_pathway, sep = ";") |&gt;
+  filter(!is.na(kegg_pathway), kegg_pathway != "")
+en &lt;- enricher(genes, TERM2GENE = t2g, universe = rownames(dds),
+               pvalueCutoff = 1, qvalueCutoff = 1)
+enr &lt;- as.data.frame(en) |&gt;
+  mutate(ratio = vapply(strsplit(GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]), 0)) |&gt;
+  arrange(p.adjust) |&gt;
+  slice_head(n = 8)
+p &lt;- ggplot(enr, aes(ratio, reorder(Description, ratio), size = Count, colour = p.adjust)) +
+  geom_point() +
+  scale_colour_viridis_c(option = "C", trans = "reverse", name = "p.adjust") +
+  labs(x = "Gene ratio", y = NULL, size = "Genes") +
+  theme_classic(base_size = 8)
+ggsave(here::here("figures/fig_enrichment.svg"), p, width = 120, height = 80, units = "mm")
+data.frame(
+  file = c("data/de_results.csv", "figures/fig_enrichment.svg"),
+  exists = file.exists(here::here(c("data/de_results.csv", "figures/fig_enrichment.svg"))),
+  de_rows = c(nrow(de), NA),
+  min_padj = c(signif(min(de$padj, na.rm = TRUE), 2), NA)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch18-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch18-ex-05">                        file exists de_rows min_padj
+1        data/de_results.csv   TRUE    1996  2.6e-06
+2 figures/fig_enrichment.svg   TRUE      NA       NA</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>1996 行</b>：所有可检验基因（含不显著），不是只挑显著的 49+5 个。</li>
+            <li><b>min_padj = 2.6e-06</b>：最强信号；但 LFC 与 CI 仍需逐基因报告。</li>
+            <li><b>富集图</b>：展示 8 个 p.adjust 最小的通路；它们都没有通过 FDR 0.05。</li>
+            <li><b>文件位置</b>：data/de_results.csv 与 figures/fig_enrichment.svg。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只交「显著基因列表」而不交完整结果表：读者无法检查阈值、FDR 分布与效应量；补充材料也复现不了。</p>
+        </div>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：低氧 vs 对照的 DE 报告</h2>
+        <p>把本章操作串成 <code>R/18_rnaseq.R</code>，产出三件交付物与一段限制说明。</p>
+        <ol class="task-steps">
+          <li><b>设计</b>：交叉表确认 group/batch 完全重合；写「不能分离」。</li>
+          <li><b>DE</b>：过滤低表达、<code>~ group</code>、DESeq、apeglm 收缩。</li>
+          <li><b>筛选</b>：padj &lt; 0.05 且 |log2FC| &gt; 1；报告上调/下调数与完整表。</li>
+          <li><b>富集</b>：自定义 TERM2GENE、背景为可检验基因；如实报告无显著通路。</li>
+          <li><b>交付</b>：<code>de_results.csv</code>、<code>fig_volcano.svg</code>、<code>fig_enrichment.svg</code>。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>设计公式与交叉表一致；没有写 <code>~ batch + group</code>。</li>
+            <li>用 padj 与 LFC 双阈值；报告收缩方法与版本。</li>
+            <li>富集结果为空时写「未发现」，不解释 nominal p。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in checkFullRank(modelMatrix) : the model matrix is not full rank, so the model cannot be fit as specified.
+One or more variables or interaction terms in the design formula are linear combinations of the others and must be removed.</p>
+        <p><b>病因</b>：design 写了 <code>~ batch + group</code>，而本数据 group 与 batch 完全重合。</p>
+        <p><b>修复</b>：删掉无法估计的项（只留 <code>~ group</code>），并在报告里说明混杂。</p>
+        <p><b>预防</b>：建模前 <code>table(group, batch)</code>；完全混杂只能重做设计。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: contrasts can be applied only to factors with 2 or more levels</p>
+        <p><b>病因</b>：过滤或 subset 后 group 只剩一个水平。</p>
+        <p><b>修复</b>：<code>droplevels()</code>；确认两组都有样本。</p>
+        <p><b>预防</b>：建模前 <code>table(meta$group)</code>。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: 'assets/data/does_not_exist.csv' does not exist in current working directory: 'C:/Users/Choi/Documents/ZCode/bioR'.</p>
+        <p><b>病因</b>：相对路径按当前工作目录解析，counts/annotation 文件不在那里。</p>
+        <p><b>修复</b>：用 <code>here::here("assets/data/…")</code>；先 <code>file.exists()</code>。</p>
+        <p><b>预防</b>：全项目 here()，打开 .Rproj 而不是双击脚本。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>padj 控制的是发现集的错误比例，不是效应大小。</b>padj = 0.01、log2FC = 0.3 可以统计显著但生物学意义有限；要结合效应量、CI、表达丰度与通路一致性。反过来，LFC 很大但 padj 不显著，也不能写「趋势显著」。</p>
+      </div>
+      <div class="repro">
+        <p>本章的 DE 结果、火山图与富集图由同一份 counts、同一 design、同一次 DESeq 运行生成；示例在独立 R 进程中执行，输出由 <code>check-examples.R</code> 逐字校验。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Differential expression was tested with DESeq2 (negative-binomial GLM, design ~ group; batch could not be included because it was completely confounded with treatment), with low-count genes filtered (counts ≥ 10 in at least 6 samples) and log2 fold changes shrunk with apeglm; genes were called at padj &lt; 0.05 and |log2FC| &gt; 1 (49 up, 5 down), and KEGG over-representation used the tested genes as background; no pathway passed FDR 0.05.</p>
+        <p class="small muted">中文：用 DESeq2（负二项 GLM，design ~ group；batch 与处理完全重合，无法纳入）检验差异表达，过滤低表达基因（至少 6 个样本 counts ≥ 10），用 apeglm 收缩 log2FC；以 padj &lt; 0.05 且 |log2FC| &gt; 1 选出 49 上调、5 下调；KEGG 过表达富集以可检验基因为背景，没有通路通过 FDR 0.05。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>DE 五步：设计可估计 → 过滤/归一化 → 负二项模型 → 收缩 + FDR/效应量双阈值 → 富集（背景正确）。完全混杂时只能报告限制；富集为空就写「未发现」。基因列表不是结论，效应量与设计才是。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch18">
+        <li><label><input type="checkbox"><span>我能用交叉表判断 group 与 batch 是否完全混杂</span></label></li>
+        <li><label><input type="checkbox"><span>我知道为什么本数据不能写 <code>~ batch + group</code></span></label></li>
+        <li><label><input type="checkbox"><span>我会用 DESeq2 完成过滤、建模与 results()</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释 padj 与 log2FC 的区别，并用双阈值筛选</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 lfcShrink 为什么能减少低表达基因的噪声</span></label></li>
+        <li><label><input type="checkbox"><span>我会用火山图展示效应量与 FDR</span></label></li>
+        <li><label><input type="checkbox"><span>我知道富集背景与 ID 版本为什么关键</span></label></li>
+        <li><label><input type="checkbox"><span>富集结果为空时，我能如实报告「未发现」</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch18">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：转录组差异分析",
+          "questions": [
+            { "type": "mcq", "q": "本数据为什么不能写 design = ~ batch + group？",
+              "options": ["batch 是数值", "group 与 batch 完全重合，模型矩阵不满秩", "样本太少", "DESeq2 不支持两个变量"], "answer": 1,
+              "explain": "完全共线导致不满秩；只能 ~ group，并说明混杂。", "skill": "design", "difficulty": 2 },
+            { "type": "mcq", "q": "选差异基因应以哪个指标控制假阳性？",
+              "options": ["pvalue", "padj (FDR)", "log2FC", "baseMean"], "answer": 1,
+              "explain": "padj 是 BH 校正后的 FDR；pvalue 不适合全基因组筛选。", "skill": "stats", "difficulty": 1 },
+            { "type": "mcq", "q": "lfcShrink 的主要作用是？",
+              "options": ["提高 p 值", "把噪声大的 log2FC 向 0 收缩", "删除低表达基因", "增加样本量"], "answer": 1,
+              "explain": "收缩减少低表达/高方差基因的 LFC 噪声，便于排序与解释。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "建立 DESeq2 对象的函数：____(counts, colData, design)。",
+              "answer": ["DESeqDataSetFromMatrix"], "explain": "矩阵输入用 DESeqDataSetFromMatrix。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "padj = 0.01 且 log2FC = 0.3 一定具有重要生物学意义。",
+              "answer": false,
+              "explain": "统计显著不等于效应大；要结合效应量、CI 与生物学背景。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "富集分析的背景基因集应该是？",
+              "options": ["全基因组所有基因", "实际检测/可检验的基因", "只有差异基因", "所有通路基因"], "answer": 1,
+              "explain": "背景应与检测范围一致，否则富集 p 被夸大。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "TERM2GENE 的第一列是基因、第二列是通路。",
+              "answer": false,
+              "explain": "第一列是 term（通路），第二列是 gene；反了会没有基因可映射。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "火山图的横纵轴通常是？",
+              "options": ["log2FC 与 -log10(padj)", "counts 与样本", "均值与 SD", "基因长度与表达"], "answer": 0,
+              "explain": "横轴效应量、纵轴显著性；双阈值线帮助筛选。", "skill": "syntax", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/ 与 figures/；图注写 design、阈值与混杂限制。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>de_results.csv</code></td><td>全部可检验基因的 shrunken 结果表</td><td>补充材料 / 复现</td></tr>
+            <tr><td><code>fig_volcano.svg</code></td><td>log2FC vs -log10(padj) 火山图</td><td>论文 Figure</td></tr>
+            <tr><td><code>fig_enrichment.svg</code></td><td>KEGG 富集气泡图（无显著通路）</td><td>结果解释</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">课程到此完成 18 章主线。回到 <a href="../project.html">课题工作台</a>，把交付物勾选完成，并检查图注、方法与限制是否写全。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#deseq2">速查：DESeq2</a>
+          <a class="btn" href="../cheatsheets.html#enrichment">速查：富集分析</a>
+          <a class="btn" href="../cheatsheets.html#power">速查：功效与样本量</a>
+          <a class="btn" href="../bioinfo.html">生信专区：Bulk RNA-seq 航线</a>
+          <a class="btn" href="../clinic.html#case-batch-confounded">病例：批次与处理混杂</a>
+          <a class="btn" href="../project.html">课题工作台</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

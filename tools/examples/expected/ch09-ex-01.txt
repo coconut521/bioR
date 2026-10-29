@@ -1,0 +1,2 @@
+[1] "theme"          "ggplot2::theme" "gg"             "S7_object"     
+[1] 9

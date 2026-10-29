@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生物绘图专区：先问问题，再选图 | bioR</title>
+<meta name="description" content="按科研问题选图的配方卡：分布、比较、关系、趋势、组学、生存；含图形解剖、期刊预设、配色库与投稿前检查清单。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="bioviz">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 生物绘图专区</p>
+
+  <header class="special-hero">
+    <span class="kicker">BIOVIZ STUDIO · 9 RECIPES LIVE</span>
+    <h1>生物绘图专区</h1>
+    <p class="lede">先问「我要展示什么」，再选图。每张配方卡给出：何时用、关键 geom、可运行代码、不推荐的做法与期刊变体。图不是装饰，是论证。</p>
+    <div class="cover-meta">
+      <span>9 张配方卡</span><span>图形解剖</span><span>配色库</span><span>投稿检查清单</span>
+    </div>
+  </header>
+
+  <div class="filter-bar" role="search" aria-label="筛选图形配方">
+    <div class="filter-chips">
+      <button type="button" class="filter-chip active" data-kind="">全部</button>
+      <button type="button" class="filter-chip" data-kind="distribution">分布</button>
+      <button type="button" class="filter-chip" data-kind="comparison">比较</button>
+      <button type="button" class="filter-chip" data-kind="relation">关系</button>
+      <button type="button" class="filter-chip" data-kind="trend">趋势</button>
+      <button type="button" class="filter-chip" data-kind="omics">组学</button>
+      <button type="button" class="filter-chip" data-kind="survival">生存</button>
+    </div>
+    <div class="filter-actions"><span class="small muted" id="viz-count">9 张配方</span></div>
+  </div>
+
+  <h2 class="sr-only">图形配方卡</h2>
+
+  <div class="unit-grid" id="viz-grid">
+
+    <article class="unit-card viz-card" id="viz-histogram" data-kind="distribution">
+      <div class="uc-meta"><span class="tag">分布</span><span class="tag blue">histogram</span></div>
+      <h3>单个连续变量的分布</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：一个连续变量的形状、尾部与多峰。</p>
+        <p><b>geom</b>：<code>geom_histogram(binwidth = ...)</code> + 可选 <code>geom_density()</code>。</p>
+        <p><b>不推荐</b>：默认组距不写进图注；用柱状图替代分布。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(pika, aes(hemoglobin_g_l)) +
+  geom_histogram(binwidth = 5, boundary = 0,
+                 fill = "#56B4E9", colour = "white") +
+  labs(x = "Haemoglobin (g/L)", y = "Count")</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch10-descriptive.html">教材：ch10</a><a class="btn" href="assets/figures/chapters/ch10-distributions.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-box-jitter" data-kind="distribution comparison">
+      <div class="uc-meta"><span class="tag">比较</span><span class="tag blue">box + jitter</span></div>
+      <h3>组间比较（小 n 必看）</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：组间比较且每组 n 小（&lt; 30）；要同时显示中位数、IQR 与个体。</p>
+        <p><b>geom</b>：<code>geom_boxplot(outlier.shape = NA)</code> + <code>geom_jitter()</code>。</p>
+        <p><b>不推荐</b>：均值柱 + 误差线掩盖分布；箱线图不标 n。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(pika, aes(altitude_group, body_mass_g)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  geom_jitter(width = .12, alpha = .45, size = .7)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch08-ggplot2.html">教材：ch08</a><a class="btn" href="assets/figures/chapters/ch08-mass-by-altitude.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-strip" data-kind="distribution comparison">
+      <div class="uc-meta"><span class="tag">比较</span><span class="tag blue">strip</span></div>
+      <h3>极小样本的分布</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：每组 n ≤ 10，箱线图会过度概括。</p>
+        <p><b>geom</b>：条带图 + 中位数横线（<code>stat_summary</code>）。</p>
+        <p><b>不推荐</b>：只画均值点，看不到个体。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(pika, aes(altitude_group, hemoglobin_g_l)) +
+  geom_jitter(width = .08, size = 1, alpha = .7) +
+  stat_summary(fun = median, geom = "crossbar", width = .4)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch02-vectors.html">教材：ch02</a><a class="btn" href="assets/figures/chapters/ch02-hb-strip.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-mean-se-letters" data-kind="comparison">
+      <div class="uc-meta"><span class="tag">比较</span><span class="tag blue">mean ± SE + letters</span></div>
+      <h3>多组均值与事后字母</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：ANOVA 之后展示组均值与校正后差异（字母）。</p>
+        <p><b>geom</b>：<code>geom_pointrange()</code> + <code>geom_text(label = .group)</code>。</p>
+        <p><b>不推荐</b>：字母用手写；误差线不写 SD/SE。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(d, aes(altitude_group, emmean)) +
+  geom_pointrange(aes(ymin = emmean - SE, ymax = emmean + SE)) +
+  geom_text(aes(label = .group), vjust = -1.6)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch12-anova.html">教材：ch12</a><a class="btn" href="assets/figures/chapters/ch12-anova-letters.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-scatter-lm" data-kind="relation">
+      <div class="uc-meta"><span class="tag">关系</span><span class="tag blue">scatter + lm</span></div>
+      <h3>两连续变量的关系与趋势</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：看两变量的方向、强度与非线性；回归线作趋势示意。</p>
+        <p><b>geom</b>：<code>geom_point()</code> + <code>geom_smooth(method = "lm", se = TRUE)</code>。</p>
+        <p><b>不推荐</b>：外推到采样范围外；把置信带当预测带。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(hb, aes(altitude_m, hemoglobin_g_l)) +
+  geom_point(size = 1.2, alpha = .6) +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch13-regression.html">教材：ch13</a><a class="btn" href="assets/figures/chapters/ch13-regression.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-facet" data-kind="relation comparison">
+      <div class="uc-meta"><span class="tag">关系</span><span class="tag blue">facet</span></div>
+      <h3>分组后模式是否改变</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：同一关系在亚组中是否一致（如性别分面）。</p>
+        <p><b>geom</b>：<code>facet_wrap(~ group, nrow = 1)</code>；共享标度。</p>
+        <p><b>不推荐</b>：<code>scales = "free_y"</code> 抹平面板间差异。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(pika, aes(altitude_group, body_mass_g)) +
+  geom_boxplot(outlier.shape = NA) +
+  facet_wrap(~sex, nrow = 1)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch08-ggplot2.html">教材：ch08</a><a class="btn" href="assets/figures/chapters/ch08-mass-sex-facet.svg">示例图</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-line-trend" data-kind="trend">
+      <div class="uc-meta"><span class="tag">趋势</span><span class="tag blue">line</span></div>
+      <h3>重复测量的时间趋势</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：同一批个体在多个时间点的变化。</p>
+        <p><b>geom</b>：<code>geom_line(aes(group = id))</code> + 均值线。</p>
+        <p><b>不推荐</b>：把个体点连成锯齿；忽略个体内相关。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(rep, aes(timepoint, body_mass_g, group = id)) +
+  geom_line(alpha = .4) +
+  stat_summary(aes(group = 1), fun = mean, geom = "line", linewidth = .8)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch11-two-group.html">教材：ch11</a><a class="btn" href="datasets.html#pika-repeated">数据：重复测量</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-volcano" data-kind="omics">
+      <div class="uc-meta"><span class="tag">组学</span><span class="tag blue">volcano</span></div>
+      <h3>差异表达火山图</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：展示效应量（log2FC）与显著性（−log10 padj）的联合分布。</p>
+        <p><b>geom</b>：<code>geom_point()</code> + 阈值线 + 标注少数基因。</p>
+        <p><b>不推荐</b>：只标 p 不标 padj；标注几十个基因造成重叠。</p>
+      </div>
+      <pre class="ex-code"><code class="r">ggplot(de, aes(log2FoldChange, -log10(padj))) +
+  geom_point(aes(colour = significant), size = 1, alpha = .7) +
+  geom_vline(xintercept = c(-1, 1), linetype = 2) +
+  geom_hline(yintercept = -log10(0.05), linetype = 2)</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch18-rnaseq.html">教材：ch18</a><a class="btn" href="datasets.html#pika-rnaseq-counts">数据：counts</a></div>
+    </article>
+
+    <article class="unit-card viz-card" id="viz-km" data-kind="survival">
+      <div class="uc-meta"><span class="tag">生存</span><span class="tag blue">km</span></div>
+      <h3>生存曲线：删失与风险表</h3>
+      <div class="uc-body">
+        <p><b>何时用</b>：结局是「到事件发生的时间」，个体随访长短不一，未发生事件的个体只能算删失。</p>
+        <p><b>geom</b>：<code>survfit(Surv(time, status) ~ group)</code> 估计 KM 曲线；风险表用 <code>summary(fit, times = ...)</code> 取每个时间点的风险人数。</p>
+        <p><b>不推荐</b>：把删失当缺失删掉；只报 log-rank p，不报 HR 与曲线本身。</p>
+      </div>
+      <pre class="ex-code"><code class="r">fit &lt;- survfit(Surv(time_days, status) ~ treatment, data = d)
+summary(fit, times = c(0, 20, 40, 60))
+plot(fit, conf.int = TRUE, col = c("#0072B2", "#D55E00"))</code></pre>
+      <div class="uc-links"><a class="btn" href="chapters/ch16-survival.html">教材：ch16</a><a class="btn" href="datasets.html#pika-survival">数据：生存</a></div>
+    </article>
+
+  </div>
+
+  <div class="empty-state" id="viz-empty" hidden><p>没有匹配的配方——点「全部」。</p></div>
+
+  <section>
+    <h2>图形解剖</h2>
+    <p class="small muted">投稿图的八个部件缺一不可。用箭头翻看每一帧，热区会对准对应位置。</p>
+    <div class="explainer" data-engine="anatomy">
+      <script type="application/json" class="explainer-data">{
+        "question": "一张投稿图由哪些部件组成？",
+        "frames": [
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "面板标签", "box": [1.5, 4.5, 4.5, 7], "note": "面板标签 A/B：审稿人引用 Figure 1A 的锚点。" },
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "轴与单位", "box": [1.5, 13, 10, 70], "note": "轴与单位：两个轴都要有变量名与单位。" },
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "个体点", "box": [8, 20, 43, 60], "note": "个体点：小 n 必须显示分布，不只画均值。" },
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "图例", "box": [89.5, 42, 9.5, 12], "note": "图例：颜色+形状双编码，标题写变量名。" },
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "拟合线", "box": [54, 33, 35, 45], "note": "拟合线：方法与用途（仅示趋势）写进图注。" },
+          { "src": "assets/figures/chapters/ch09-figure1.svg", "alt": "整体", "box": [0, 0, 100, 100], "note": "整体：统一色板与字号，拼图前先统一。" }
+        ]
+      }</script>
+    </div>
+  </section>
+
+  <section>
+    <h2>配色库与期刊预设</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <caption>色盲安全优先；分类 &gt; 8 组改用分面。</caption>
+        <thead><tr><th scope="col">用途</th><th scope="col">色板</th><th scope="col">R 用法</th></tr></thead>
+        <tbody>
+          <tr><td>三组海拔</td><td>Okabe–Ito（蓝/橙/深蓝）</td><td><code>scale_fill_manual(values = c(low = "#56B4E9", mid = "#E69F00", high = "#0072B2"))</code></td></tr>
+          <tr><td>两组处理</td><td>蓝 vs 朱红</td><td><code>scale_colour_manual(values = c(control = "#56B4E9", hypoxia = "#D55E00"))</code></td></tr>
+          <tr><td>连续值</td><td>viridis / cividis</td><td><code>scale_fill_viridis_c()</code></td></tr>
+          <tr><td>发散值</td><td>蓝–白–红（色盲安全变体）</td><td><code>scale_fill_gradient2(low = "#0072B2", mid = "white", high = "#D55E00")</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>期刊预设</h3>
+      <ul class="small">
+        <li><b>单栏</b> 89 mm；<b>双栏</b> 183 mm；字号 7–9 pt。</li>
+        <li><b>矢量</b>：PDF（cairo_pdf 嵌入字体）或 SVG；位图仅作投稿系统备用（≥ 300 dpi）。</li>
+        <li><b>图注</b>：n、误差定义、统计方法、软件版本。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>改图前后：三个常见反例</h2>
+    <div class="unit-grid">
+      <article class="unit-card">
+        <div class="uc-meta"><span class="tag red">反例 1</span></div>
+        <h3>均值柱 + 误差线 → 箱线 + 散点</h3>
+        <p class="uc-body">柱状图把分布、离群值和 n 全部藏起来。改为箱线图 + 个体点，并在图注写 n = 20/组。</p>
+      </article>
+      <article class="unit-card">
+        <div class="uc-meta"><span class="tag red">反例 2</span></div>
+        <h3>彩虹色 → Okabe–Ito</h3>
+        <p class="uc-body">彩虹色在色盲与灰度打印下不可辨。改为 Okabe–Ito 并加形状/线型冗余编码。</p>
+      </article>
+      <article class="unit-card">
+        <div class="uc-meta"><span class="tag red">反例 3</span></div>
+        <h3>截图导出 → 89 mm 矢量</h3>
+        <p class="uc-body">屏幕截图会跑版。改为 <code>ggsave(units = "mm", device = cairo_pdf)</code>，并按终稿尺寸检查字号。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="cheatsheets.html#figure-qc">速查：图形质检清单</a>
+      <a class="btn" href="cheatsheets.html#ggplot2-grammar">速查：ggplot2 语法</a>
+      <a class="btn" href="chapters/ch09-publication.html">教材：ch09 出版级图形</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/stepper.js"></script>
+<script src="assets/js/pages/bioviz.js"></script>
+</body>
+</html>

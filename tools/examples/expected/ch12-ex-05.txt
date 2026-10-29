@@ -1,0 +1,5 @@
+  altitude_group  emmean       SE .group
+3           high 167.605 3.628081      a
+2            mid 178.710 3.628081      a
+1            low 179.770 3.628081      a
+[1] TRUE TRUE

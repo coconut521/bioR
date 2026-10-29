@@ -1,0 +1,12 @@
+# A tibble: 3 × 3
+  altitude_group n_all n_valid
+  <chr>          <int>   <int>
+1 high              20      19
+2 low               20      19
+3 mid               20      20
+# A tibble: 3 × 3
+  altitude_group n_all n_valid
+  <chr>          <int>   <int>
+1 high              19      19
+2 low               19      19
+3 mid               20      20

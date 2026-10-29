@@ -1,0 +1,6 @@
+[1] 58
+# A tibble: 2 × 3
+  id    body_mass_g hemoglobin_g_l
+  <chr>       <dbl>          <dbl>
+1 P017         215.             NA
+2 P042         173.             NA

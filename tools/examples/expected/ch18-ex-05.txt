@@ -1,0 +1,3 @@
+                        file exists de_rows min_padj
+1        data/de_results.csv   TRUE    1996  2.6e-06
+2 figures/fig_enrichment.svg   TRUE      NA       NA

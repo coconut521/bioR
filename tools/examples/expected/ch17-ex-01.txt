@@ -1,0 +1,2 @@
+  genes kept samples min_logcpm max_logcpm
+1  2000 1996      12       1.75      12.96

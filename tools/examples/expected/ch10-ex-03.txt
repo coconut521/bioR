@@ -1,0 +1,8 @@
+lower upper 
+146.5 204.3 
+# A tibble: 3 × 3
+  id    altitude_group body_mass_g
+  <chr> <chr>                <dbl>
+1 P017  low                   215.
+2 P023  mid                   232 
+3 P048  high                  118 

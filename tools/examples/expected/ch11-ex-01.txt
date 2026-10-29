@@ -1,0 +1,4 @@
+# A tibble: 1 × 6
+  estimate1 estimate2 estimate conf.low conf.high p.value
+      <dbl>     <dbl>    <dbl>    <dbl>     <dbl>   <dbl>
+1      171.      180.    -8.64    -17.2   -0.0824  0.0479

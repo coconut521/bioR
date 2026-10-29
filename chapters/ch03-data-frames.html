@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 3 章 数据框与 tidy 数据：一张表就是一次实验 | bioR</title>
+<meta name="description" content="用 pika_physiology.csv 学数据框：tibble、行列索引、glimpse、tidy 三原则、ID 唯一性检查与数据字典；含 R console、科研任务与交付物。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch03" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 3 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 03 · DATA FRAMES &amp; TIDY DATA</span><span>STAGE I · PREPARE DATA</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">03</div>
+          <div class="cover-copy">
+            <h1>数据框与 tidy 数据：一张表就是一次实验</h1>
+            <p class="cover-lede">60 行、11 列、一行一个个体——统计的一切都建立在这张表的形状约定上。</p>
+            <p class="cover-question"><b>本章科研问题：</b>一张样本表怎样才算「一行一个个体」？</p>
+            <div class="cover-meta">
+              <span>85 MIN</span><span>前置 ch02</span><span>数据 pika_physiology.csv</span><span>交付 metadata_tidy.csv · data_dictionary.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>读入数据框并用 <code>glimpse()</code> 说出维度、列类型与前三行。</li>
+          <li>用 <code>$</code> 与 <code>[row, col]</code> 取出单个值、一行和一列。</li>
+          <li>说出 tidy 三原则，并判断一张表是否 tidy。</li>
+          <li>检查 ID 唯一性（<code>duplicated()</code> / <code>distinct()</code>）。</li>
+          <li>把分组列设为有序因子并验证各组 n。</li>
+          <li>写出一份含单位、缺失与允许范围的数据字典。</li>
+        </ul>
+        <p class="small muted">前置：第 2 章；数据：<code>pika_physiology.csv</code>；交付：<code>metadata_tidy.csv</code>、<code>data_dictionary.csv</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>样本表在导师和仪器之间传来传去。有人把三次测量的血压拆成三列，有人把两组数据摞在一张 Excel 里，还有人在表头写「3月5日体重①」。这一章立规矩：<b>一行是一个个体，一列是一个变量，一张表是一次实验</b>。</p>
+      </div>
+
+      <h2>1. 数据框：列的列表</h2>
+      <p><b>数据框</b>（data frame）是一组等长向量的集合：每列一个向量（类型可以不同），每行一个观测。<code>tibble</code> 是 tidyverse 的现代版数据框——打印更聪明（只显示前 10 行和列类型）、从不悄悄改名。</p>
+
+      <article class="example-card" id="ch03-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：读入样本表并查看四个关键列</h3>
+          <div class="ex-meta"><span class="tag">glimpse</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch03-ex-01"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+glimpse(pika[, c("id", "altitude_group", "sex", "body_mass_g")])</code></pre>
+        <div class="ex-output" data-output-for="ch03-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">Rows: 60
+Columns: 4
+$ id             &lt;chr&gt; "P001", "P002", "P003", "P004", "P005", "P006", "P007",…
+$ altitude_group &lt;chr&gt; "low", "low", "low", "low", "low", "low", "low", "low",…
+$ sex            &lt;chr&gt; "F", "F", "F", "F", "F", "F", "F", "F", "F", "F", "M", …
+$ body_mass_g    &lt;dbl&gt; 164.6, 158.1, 156.3, 190.1, 186.4, 162.3, 194.3, 170.9,…</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：挂载包（每个脚本自包含）。</li>
+            <li><b>第 2–3 行</b>：读入 60 × 11 的样本表。</li>
+            <li><b>第 4 行</b>：<code>pika[, c("id", …)]</code> 选出 4 列，<code>glimpse()</code> 转置展示：每行 = 变量名 + 类型 + 样本值。</li>
+          </ul>
+        </div>
+        <div class="ex-variants">
+          <h4>base R 对照</h4>
+          <pre><code class="r">str(pika[, c("id", "altitude_group", "sex", "body_mass_g")])</code></pre>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载 readr 与 dplyr", "dataframe": null },
+          { "line": 2, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入样本表", "dataframe": {
+            "columns": [ { "name": "id", "type": "chr" }, { "name": "altitude_group", "type": "chr" }, { "name": "sex", "type": "chr" }, { "name": "body_mass_g", "type": "dbl" } ],
+            "rows": [ ["P001", "low", "F", "164.6"], ["P002", "low", "F", "158.1"], ["P003", "low", "F", "156.3"] ], "highlight": [0], "note": "一行一个个体" } },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "Rows: 60 Columns: 4 …", "note": "转置打印：列名 + 类型 + 样本值", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="dataframe">
+        <script type="application/json" class="explainer-data">{
+          "question": "这一行，是一个个体吗？",
+          "frames": [
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "sex", "type": "fct" }, { "name": "body_mass_g", "type": "dbl" }, { "name": "hemoglobin_g_l", "type": "dbl" } ],
+              "rows": [ ["P001", "F", "164.6", "155.6"], ["P002", "F", "158.1", "157.8"], ["P003", "F", "156.3", "142.6"] ],
+              "highlight": [0], "note": "第 1 行 = P001 号个体的全部测量：这就是 tidy。" },
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "sex", "type": "fct" }, { "name": "body_mass_g", "type": "dbl" }, { "name": "hemoglobin_g_l", "type": "dbl" } ],
+              "rows": [ ["P001", "F", "164.6", "155.6"], ["P001", "F", "161.0", "154.0"], ["P002", "F", "158.1", "157.8"] ],
+              "highlight": [0, 1], "dupe": [1], "note": "P001 出现两次：同一行不是同一个体——ID 重复是 QC 的头号红旗。" },
+            { "columns": [ { "name": "id", "type": "chr" }, { "name": "mass_T0", "type": "dbl" }, { "name": "mass_T14", "type": "dbl" }, { "name": "mass_T28", "type": "dbl" } ],
+              "rows": [ ["P001", "164.6", "161.0", "159.2"], ["P002", "158.1", "160.3", "157.7"] ],
+              "highlight": [], "note": "时间点藏进列名：不 tidy。第 7 章 pivot_longer() 会把它转回来。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. 索引：精确取出你要的那个值</h2>
+
+      <article class="example-card" id="ch03-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：$, [i, j] 与逻辑索引</h3>
+          <div class="ex-meta"><span class="tag">$ 与 []</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch03-ex-02"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika$body_mass_g[1]
+pika[1, ]
+pika[pika$sex == "F", "body_mass_g"]</code></pre>
+        <div class="ex-output" data-output-for="ch03-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 164.6
+# A tibble: 1 × 11
+  id    altitude_m altitude_group sex   body_mass_g body_length_mm
+  &lt;chr&gt;      &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;       &lt;dbl&gt;          &lt;dbl&gt;
+1 P001        3200 low            F            165.           184.
+# ℹ 5 more variables: hemoglobin_g_l &lt;dbl&gt;, hematocrit_pct &lt;dbl&gt;,
+#   glucose_mmol_l &lt;dbl&gt;, batch &lt;chr&gt;, measured_on &lt;date&gt;
+# A tibble: 30 × 1
+   body_mass_g
+         &lt;dbl&gt;
+# ... (11 more lines; full output: expected/ch03-ex-02.txt)</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：<code>pika$body_mass_g</code> 取出一列（向量），<code>[1]</code> 取第一个元素。</li>
+            <li><b>第 5 行</b>：<code>pika[1, ]</code> 取第 1 <b>行</b>——P001 的全部 11 个变量。</li>
+            <li><b>第 6 行</b>：逻辑索引取列：30 只雌性的体重。行数 = 30，与设计一致。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>pika[1]</code> 取的是第 1 <b>列</b>（仍是数据框），<code>pika[1, ]</code> 才是第 1 行。逗号的位置就是行与列的分界。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "[1] 164.6", "note": "一列向量再取第 1 个", "dataframe": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 1 × 11", "note": "第 1 行：P001 的全部变量", "dataframe": {
+            "columns": [ { "name": "id", "type": "chr" }, { "name": "sex", "type": "chr" }, { "name": "body_mass_g", "type": "dbl" } ],
+            "rows": [ ["P001", "F", "164.6"] ], "highlight": [0], "note": "一行 = 一次完整观测" } },
+          { "line": 6, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 30 × 1", "note": "雌性 30 只", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. tidy 三原则与 ID 检查</h2>
+      <p>tidy 数据（Wickham, 2014）三条约定：<b>一行一个观测</b>、<b>一列一个变量</b>、<b>一张表一个分析单位</b>。违背任何一条，统计和画图都会多绕路。判断的第一步永远是 ID 唯一性。</p>
+
+      <article class="example-card" id="ch03-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：ID 唯一性检查</h3>
+          <div class="ex-meta"><span class="tag">duplicated · distinct</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch03-ex-03"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+dup_id &lt;- pika$id[duplicated(pika$id)]
+length(dup_id)
+pika |&gt; distinct(id) |&gt; nrow()</code></pre>
+        <div class="ex-output" data-output-for="ch03-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 0
+[1] 60</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：<code>duplicated()</code> 标出第二次及以后出现的 ID；本数据 0 个重复。</li>
+            <li><b>第 5 行</b>：双保险——<code>distinct()</code> 去重后仍 60 行，等于「每个 ID 恰好一行」。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只在 Excel 里「肉眼看看」ID。60 行看得过来，6000 行看不过来；重复个体会把 n 虚增、把 p 值做小（第 15 章伪重复的伏笔）。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "[1] 0", "note": "没有重复 ID", "dataframe": null },
+          { "line": 6, "vars": { "pika": "60 × 11" }, "out": "[1] 60", "note": "去重后仍 60 行", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>4. 因子化分组列</h2>
+
+      <article class="example-card" id="ch03-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：海拔组设为有序因子</h3>
+          <div class="ex-meta"><span class="tag">factor · levels</span><span class="tag blue">建模前置</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch03-ex-04"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika_tidy &lt;- pika |&gt;
+  mutate(altitude_group = factor(altitude_group,
+    levels = c("low", "mid", "high"), ordered = TRUE))
+levels(pika_tidy$altitude_group)
+table(pika_tidy$altitude_group)</code></pre>
+        <div class="ex-output" data-output-for="ch03-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "low"  "mid"  "high"
+
+ low  mid high 
+  20   20   20 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–6 行</b>：第一条管道——<code>mutate()</code> 原地替换 <code>altitude_group</code> 为有序因子。</li>
+            <li><b>第 7 行</b>：<code>levels()</code> 确认顺序 low → mid → high（海拔是<b>有序</b>变量）。</li>
+            <li><b>第 8 行</b>：各组 20 只，3 × 2 × 10 设计对上了。</li>
+          </ul>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika_tidy": "60 × 11" }, "out": "", "note": "管道：mutate 因子化", "dataframe": null },
+          { "line": 7, "vars": { "pika_tidy": "60 × 11" }, "out": "low mid high", "note": "水平顺序 = 海拔顺序", "dataframe": null },
+          { "line": 8, "vars": { "pika_tidy": "60 × 11" }, "out": "20 20 20", "note": "各组 n 与设计一致", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>5. 数据字典：给每个变量建档</h2>
+      <p><b>数据字典</b>（data dictionary）逐变量记录名称、类型、单位、缺失含义与允许范围。它是样本表的「标签」——三个月后你、审稿人、合作者都靠它读懂数据。</p>
+
+      <article class="example-card" id="ch03-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：用 tribble() 起草数据字典</h3>
+          <div class="ex-meta"><span class="tag">tribble</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch03-ex-05"><code class="r">library(readr); library(dplyr)
+dict &lt;- tribble(
+  ~variable,         ~type,  ~unit,  ~missing, ~allowed_range, ~description,
+  "id",              "chr",  "-",    0,        "P001-P060",    "individual id; one row = one individual",
+  "altitude_group",  "fct",  "-",    0,        "low&lt;mid&lt;high", "ordered altitude factor",
+  "sex",             "fct",  "-",    0,        "F, M",         "sex",
+  "body_mass_g",     "dbl",  "g",    0,        "110-240",      "body mass",
+  "hemoglobin_g_l",  "dbl",  "g/L",  2,        "100-260",      "hemoglobin; NA = hemolysis"
+)
+dict</code></pre>
+        <div class="ex-output" data-output-for="ch03-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 5 × 6
+  variable       type  unit  missing allowed_range description                  
+  &lt;chr&gt;          &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;chr&gt;         &lt;chr&gt;                        
+1 id             chr   -           0 P001-P060     individual id; one row = one…
+2 altitude_group fct   -           0 low&lt;mid&lt;high  ordered altitude factor      
+3 sex            fct   -           0 F, M          sex                          
+4 body_mass_g    dbl   g           0 110-240       body mass                    
+5 hemoglobin_g_l dbl   g/L         2 100-260       hemoglobin; NA = hemolysis   </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 2 行</b>：<code>tribble()</code> 按「转置」的写法建小表——每列以 <code>~</code> 开头，可读性最好。</li>
+            <li><b>hemoglobin 行</b>：<code>missing = 2</code> 与第 2 章 NA 对账；<code>NA = hemolysis</code> 写明缺失的<b>含义</b>。</li>
+          </ul>
+        </div>
+        <div class="stats">
+          <p>数据字典要回答三个问题：这个变量<b>是什么</b>（单位、类型）、<b>缺了怎么办</b>（缺失数与含义）、<b>什么值可信</b>（允许范围）。统计单位（个体/批次/时间点）必须写进去。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载包", "dataframe": null },
+          { "line": 2, "vars": { "dict": "5 × 6" }, "out": "", "note": "tribble 逐行建字典", "dataframe": null },
+          { "line": 10, "vars": { "dict": "5 × 6" }, "out": "# A tibble: 5 × 6", "note": "字典本身也是 tidy 表", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：产出 tidy 样本表与数据字典</h2>
+        <p>把本章操作串成 <code>03_tidy.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>检查</b>：ID 唯一（0 重复）、维度 60 × 11、各组 n = 20。</li>
+          <li><b>因子化</b>：<code>altitude_group</code> 设为有序因子，<code>sex</code>、<code>batch</code> 设为因子。</li>
+          <li><b>导出表</b>：<code>write_csv(pika_tidy, here::here("data/metadata_tidy.csv"))</code>。</li>
+          <li><b>写字典</b>：仿示例 5 覆盖全部 11 个变量（单位、缺失、允许范围、统计单位），导出 <code>data_dictionary.csv</code>。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>字典的 missing 列与 <code>sum(is.na())</code> 逐列对账。</li>
+            <li>字典覆盖统计单位：「一行 = 一个个体」写在 description 里。</li>
+            <li>重跑 <code>03_tidy.R</code>，两份 CSV 内容一致。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in pika$body_mass : $ operator is invalid for atomic vectors</p>
+        <p><b>病因</b>：把向量当成了数据框——<code>$</code> 只能用于列表/数据框。</p>
+        <p><b>修复</b>：确认对象类型 <code>class(pika)</code>；列名核对 <code>names(pika)</code>。</p>
+        <p><b>预防</b>：读入后先 <code>glimpse()</code>，别凭记忆猜列名。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Can't subset columns that don't exist. Column `body_mass` doesn't exist.</p>
+        <p><b>病因</b>：列名拼写错误（少了 <code>_g</code>）。</p>
+        <p><b>修复</b>：<code>names(pika)</code> 或 RStudio 补全；报错里会列出最接近的候选名。</p>
+        <p><b>预防</b>：列名也走 snake_case；数据字典与列名一一对应。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in `[.data.frame`(pika, 1, ) : 重复的行名… / duplicated row names</p>
+        <p><b>病因</b>：把 ID 当行名后又有重复 ID——tidy 数据不依赖行名，用列存 ID。</p>
+        <p><b>修复</b>：用 <code>pika[pika$id == "P001", ]</code> 按 ID 检索。</p>
+        <p><b>预防</b>：tibble 默认不设行名；坚持「ID 是列，不是行名」。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p>统计单位必须在数据字典里写清：本章的 60 是<b>个体数</b>；第 15 章你会看到，同一只个体测 3 次的 36 行仍是 12 个个体。表的形状决定 n 的含义。</p>
+      </div>
+      <div class="repro">
+        <p><code>metadata_tidy.csv</code> 由脚本从 <code>data-raw/</code> 生成——不要在 Excel 里直接改它；要改的是脚本和字典。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Individual identity, sex, and altitude group were verified against the sample sheet prior to analysis; each row of the analysis dataset corresponds to one individual (n = 60).</p>
+        <p class="small muted">中文：分析前逐项核对个体编号、性别与海拔组；分析数据集每行对应一个个体（n = 60）。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>数据框 = 等长向量的集合；tidy = 一行一个体、一列一变量、一表一实验。ID 唯一性用 duplicated()/distinct() 双保险，数据字典逐变量写单位、缺失与范围。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch03">
+        <li><label><input type="checkbox"><span>我能说出 tidy 三原则并举一个反例</span></label></li>
+        <li><label><input type="checkbox"><span>我能区分 <code>pika[1]</code>、<code>pika[1, ]</code>、<code>pika[, 1]</code></span></label></li>
+        <li><label><input type="checkbox"><span>我会用 duplicated()/distinct() 检查 ID 唯一性</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释为什么海拔组要设为<b>有序</b>因子</span></label></li>
+        <li><label><input type="checkbox"><span>我能写一份含单位、缺失、范围、统计单位的数据字典</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出「60 行数据、36 行重复测量」里 n 分别是多少</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch03">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：数据框与 tidy 数据",
+          "questions": [
+            { "type": "mcq", "q": "<code>pika[1, ]</code> 返回的是？",
+              "options": ["第 1 列", "第 1 行（仍是数据框）", "第 1 个元素", "报错"], "answer": 1,
+              "explain": "逗号前是行、逗号后是列；pika[1, ] 是第 1 行的全部 11 个变量。pika[1] 才是第 1 列。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "下列哪种表最符合 tidy 数据？",
+              "options": ["每只个体一行，体重一列", "三次测量拆成三列 mass_T0/T14/T28", "体重写在合并单元格里", "两个实验摞在一张表"], "answer": 1,
+              "explain": "T0/T14/T28 是「时间点」变量的三个水平，藏进列名违背 tidy；第 7 章 pivot_longer() 修复。", "skill": "syntax", "difficulty": 2 },
+            { "type": "tf", "q": "60 行的样本表去重后仍是 60 行，说明每个 ID 恰好出现一次。",
+              "answer": true,
+              "explain": "distinct(id) 后行数不变 = 无重复 ID。这是「一行一个个体」的机械验证。", "skill": "repro", "difficulty": 1 },
+            { "type": "fill", "q": "检查重复 ID 的函数：pika$id[____(pika$id)]。",
+              "answer": ["duplicated"], "explain": "duplicated() 标出第二次及以后的出现；首次出现不算重复。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "海拔组 low/mid/high 应该用什么类型的因子？",
+              "options": ["普通因子", "有序因子（ordered = TRUE）", "字符", "数字 1/2/3"], "answer": 1,
+              "explain": "海拔有自然顺序；ordered 让模型与图都尊重 low < mid < high。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "数据字典里最不能省的一栏是？",
+              "options": ["变量英文名", "统计单位与缺失含义", "作者姓名", "创建时间"], "answer": 1,
+              "explain": "统计单位决定 n 的含义；缺失含义决定能不能剔除。这两栏出错，统计全错。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：取出全部雌性的体重列。",
+              "code": "pika[pika$sex == \"____\", \"body_mass_g\"]",
+              "blanks": [ { "answer": ["F"] } ],
+              "explain": "逻辑条件放在行的位置，列名放在列的位置。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "同一只鼠兔测 3 次得到 36 行，n（个体数）是？",
+              "options": ["36", "12", "3", "108"], "answer": 1,
+              "explain": "行数 36 ≠ 个体数 12；把 36 当 n 就是伪重复（第 15 章）。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；字典与表必须同步更新。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>metadata_tidy.csv</code></td><td>因子化后的 60 × 11 样本表</td><td>ch06 整形、ch08 画图</td></tr>
+            <tr><td><code>data_dictionary.csv</code></td><td>11 个变量的单位/缺失/范围</td><td>ch04 QC 的判定依据</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：数据不总是你亲手录入的——酶标仪 CSV 有注释行、Excel 记录有两个 sheet。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#data-frames-tibble">速查：数据框与 tibble</a>
+          <a class="btn" href="../cheatsheets.html#data-dictionary">速查：数据字典模板</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

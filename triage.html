@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R 代码急救室：先看报错，再改代码 | bioR</title>
+<meta name="description" content="50 条真实 R 报错（由 R 4.5.2 实际触发采集）：报错原文、最小复现、病因、修复、预防与相关章节；含调试五步法与提问模板。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="triage">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / R 代码急救室</p>
+
+  <header class="special-hero">
+    <span class="kicker">R TRIAGE · 50 REAL ERRORS</span>
+    <h1>R 代码急救室</h1>
+    <p class="lede">每一条报错都来自真实运行（R 4.5.2，由脚本采集），不是你记错的样子。粘贴关键词 → 找到原因 → 照处方改 → 记住预防。</p>
+    <div class="cover-meta"><span>50 条真实报错</span><span>10 类分诊</span><span>最小复现</span><span>调试五步法</span></div>
+  </header>
+
+  <div class="filter-bar" role="search" aria-label="搜索报错">
+    <div class="filter-chips" id="tri-cats">
+      <button type="button" class="filter-chip active" data-cat="">全部</button>
+    </div>
+    <div class="filter-search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="tri-q" type="search" placeholder="搜索报错关键词" aria-label="搜索报错">
+    </div>
+    <div class="filter-actions"><button type="button" class="btn" id="tri-reset">重置</button></div>
+  </div>
+
+  <p class="small muted" id="tri-count">50 条报错</p>
+  <p class="small muted">报错原文与最小复现由 <code>tools/collect-errors.R</code> 在 R 4.5.2 中实际触发采集；页面只读取生成的数据文件。</p>
+
+  <div class="triage-grid" id="tri-grid"></div>
+  <div class="empty-state" id="tri-empty" hidden><p>没有匹配的报错——换关键词，或点「重置」。</p></div>
+  <noscript><p class="small muted">报错卡片由本地 JavaScript 从 <code>assets/js/data/triage-data.js</code> 渲染；启用 JavaScript 后即可按分类浏览 50 条真实报错。</p></noscript>
+
+  <section>
+    <h2>调试五步法</h2>
+    <div class="unit-grid">
+      <article class="unit-card"><h3>1. 读最后一行</h3><p class="uc-body">错误类型 + 对象/函数名；前面的调用栈只用来定位位置。</p></article>
+      <article class="unit-card"><h3>2. 最小复现</h3><p class="uc-body">把出错代码缩到三行以内；能复现，才说明找对了原因。</p></article>
+      <article class="unit-card"><h3>3. 查对象</h3><p class="uc-body"><code>class()</code>、<code>names()</code>、<code>str()</code> 看类型与列名，别凭记忆。</p></article>
+      <article class="unit-card"><h3>4. 改一处，重跑</h3><p class="uc-body">一次只改一个假设；改完立刻重跑，确认错误消失。</p></article>
+      <article class="unit-card"><h3>5. 写进笔记</h3><p class="uc-body">把原因与修复写进脚本注释或本页收藏，下次不再花十分钟。</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>提问模板（reprex）</h2>
+    <p class="small muted">向老师/论坛提问时，附上这三样：最小代码、报错原文、<code>sessionInfo()</code> 的 R 版本与包版本。</p>
+    <pre class="ex-code"><code class="r"># 1) minimal code
+library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"))
+pika |&gt; filter(body_mass &gt;= 110)
+
+# 2) exact error text (copy the LAST line)
+# object 'body_mass' not found   ← from the filter-typo-object card above
+
+# 3) environment
+sessionInfo()   # or: R.version.string; packageVersion("dplyr")</code></pre>
+  </section>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="cheatsheets.html#r-syntax">速查：基础语法</a>
+      <a class="btn" href="stats-nav.html">统计导航</a>
+      <a class="btn" href="clinic.html">数据诊所</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/triage-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/triage.js"></script>
+</body>
+</html>

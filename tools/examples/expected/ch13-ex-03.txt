@@ -1,0 +1,2 @@
+shapiro_resid       max_hat     big_resid 
+        0.073         0.063         3.000 

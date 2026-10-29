@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 17 章 多变量与聚类：PCA、热图与样本分群 | bioR</title>
+<meta name="description" content="对 logCPM 做 PCA、按 group/batch 着色、画高变基因热图与层次聚类；识别离群与批次混杂，避免把技术差异当生物学发现。数据 2000×12 counts。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch17" data-part="IV">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 17 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 17 · MULTIVARIATE</span><span>STAGE IV · ADVANCED</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">17</div>
+          <div class="cover-copy">
+            <h1>多变量与聚类：PCA、热图与样本分群</h1>
+            <p class="cover-lede">PCA 第一轴把样本分成两堆——是处理效应，还是建库批次？在解释任何「分群」之前，先看设计表。</p>
+            <p class="cover-question"><b>本章科研问题：</b>12 个 RNA-seq 样本，PCA 第一轴分离的是低氧处理，还是测序批次？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch07 · ch10</span><span>数据 counts 2000×12</span><span>交付 fig_pca.svg · fig_heatmap.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>把 counts 转成 logCPM，理解为什么不能直接对原始 counts 做 PCA。</li>
+          <li>用 <code>prcomp()</code> 做 PCA，读方差解释比例与样本得分。</li>
+          <li>按 group 与 batch 着色，识别「完全混杂」的图形证据。</li>
+          <li>画高变基因热图，理解行标准化与聚类距离。</li>
+          <li>知道无监督分析只能生成假设，不能证明处理效应。</li>
+        </ul>
+        <p class="small muted">前置：第 7、10 章；数据：<code>pika_rnaseq_counts.csv</code>、<code>pika_rnaseq_metadata_clean.csv</code>；交付：<code>fig_pca.svg</code>、<code>fig_heatmap.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>12 个样本：C1–C6 对照、H1–H6 低氧。看设计表会发现一个致命事实：<b>对照全在 batch1，低氧全在 batch2</b>。因此 PCA 上「两组分开」既可能是处理，也可能是批次——本章的任务是看懂这个混杂，而不是把它解释成生物学发现。</p>
+      </div>
+
+      <h2>1. 从 counts 到 logCPM：先让基因可比</h2>
+      <p>原始 counts 的方差随均值增长，高表达基因会支配 PCA。先过滤低表达基因、算归一化因子，再做 logCPM 变换；这样样本间比较才不被文库大小和表达量级扭曲。</p>
+
+      <article class="example-card" id="ch17-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：过滤、归一化与 logCPM</h3>
+          <div class="ex-meta"><span class="tag">edgeR</span><span class="tag green">先变换</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch17-ex-01"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(edgeR)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+y &lt;- DGEList(counts = mat, group = meta$group)
+keep &lt;- filterByExpr(y, group = meta$group)
+y &lt;- y[keep, , keep.lib.sizes = FALSE]
+y &lt;- calcNormFactors(y)
+lcpm &lt;- cpm(y, log = TRUE)
+data.frame(
+  genes = nrow(counts),
+  kept = sum(keep),
+  samples = ncol(lcpm),
+  min_logcpm = round(min(lcpm), 2),
+  max_logcpm = round(max(lcpm), 2)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch17-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch17-ex-01">  genes kept samples min_logcpm max_logcpm
+1  2000 1996      12       1.75      12.96</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>2000 → 1996</b>：过滤掉 4 个低表达基因；保留的基因才参与结构分析。</li>
+            <li><b>12 个样本</b>：列顺序严格按样本表取，避免列名错位。</li>
+            <li><b>logCPM 1.75–12.96</b>：量级被压缩，样本间比较不再被文库大小支配。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>直接对原始 counts 做 PCA：方差与均值强相关，第一轴往往只是「测序深度/高表达基因」，不是生物学结构。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 4, "vars": { "counts": "2000 × 12" }, "out": "", "note": "读入 counts，并把 gene_id 设为行名", "dataframe": null },
+          { "line": 9, "vars": { "y": "DGEList" }, "out": "", "note": "建立 edgeR 对象，按 group 分组", "dataframe": null },
+          { "line": 10, "vars": { "keep": "logical[2000]" }, "out": "", "note": "过滤低表达基因", "dataframe": null },
+          { "line": 14, "vars": {}, "out": "2000 → 1996 genes；12 samples；logCPM 1.75–12.96", "note": "先归一化再比较", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="matrix">
+        <script type="application/json" class="explainer-data">{
+          "question": "为什么要先做 log 变换？",
+          "frames": [
+            { "cells": [ [54, 100, 100, 49], [374, 489, 297, 417], [378, 791, 201, 456], [437, 240, 205, 433], [40, 82, 48, 97], [276, 264, 70, 160] ],
+              "rowLabels": ["G00001", "G00002", "G00003", "G00004", "G00005", "G00006"],
+              "colLabels": ["C1", "C2", "H1", "H2"],
+              "note": "原始 counts（行自上而下 G00001–G00006）：G00002/03 的数值远大于 G00001/05，方差也被它们支配；直接 PCA 会被高表达基因绑架。" },
+            { "cells": [ [6.7, 7.4, 7.3, 6.4], [9.4, 9.6, 8.8, 9.4], [9.4, 10.3, 8.3, 9.6], [9.6, 8.6, 8.3, 9.5], [6.3, 7.1, 6.3, 7.4], [9.0, 8.7, 6.8, 8.1] ],
+              "rowLabels": ["G00001", "G00002", "G00003", "G00004", "G00005", "G00006"],
+              "colLabels": ["C1", "C2", "H1", "H2"],
+              "note": "logCPM：量级可比，样本间差异不再由文库大小决定；这才适合做 PCA 与热图。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. PCA：方差解释与样本位置</h2>
+      <p>对 12 个样本 × 1996 个基因的 logCPM 矩阵做 PCA（<code>scale. = TRUE</code>）。PC1 与 PC2 解释的方差比例决定这张图能承载多少信息；样本得分则给出分群。</p>
+
+      <figure class="plot-stage" data-figure="ch17-pca">
+        <div class="plot-stage-head">
+          <span>图 17.1 · 样本 PCA（group 颜色 / batch 形状）</span>
+          <a href="../assets/figures/chapters/ch17-pca.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch17-pca.svg"
+               alt="12 个 RNA-seq 样本的 PCA 散点图：对照组 6 个点聚在 PC1 左侧，低氧组 6 个点聚在右侧；颜色表示分组、形状表示批次，两种标记完全重合。"
+               width="712" height="560">
+        </div>
+        <figcaption>图 17.1 · logCPM 表达的 PCA；n = 12（每组 6）；PC1 解释 12.8%、PC2 解释 9.7% 的方差；颜色为 group、形状为 batch——本设计中处理与批次完全重合，PC1 无法区分二者。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch17_pca.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <article class="example-card" id="ch17-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：PC1/PC2 方差与组中心</h3>
+          <div class="ex-meta"><span class="tag">prcomp</span><span class="tag blue">方差解释</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch17-ex-02"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(edgeR)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+y &lt;- DGEList(counts = mat, group = meta$group)
+y &lt;- y[filterByExpr(y, group = meta$group), , keep.lib.sizes = FALSE]
+lcpm &lt;- cpm(calcNormFactors(y), log = TRUE)
+pca &lt;- prcomp(t(lcpm), scale. = TRUE)
+var &lt;- round(100 * pca$sdev^2 / sum(pca$sdev^2), 1)
+cent &lt;- aggregate(pca$x[, 1:2], by = list(group = meta$group), mean)
+cm &lt;- cent[cent$group == "control", c("PC1", "PC2")]
+hm &lt;- cent[cent$group == "hypoxia", c("PC1", "PC2")]
+data.frame(
+  PC = c("PC1", "PC2"),
+  variance_pct = var[1:2],
+  control = round(as.numeric(cm), 1),
+  hypoxia = round(as.numeric(hm), 1)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch17-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch17-ex-02">   PC variance_pct control hypoxia
+1 PC1         12.8   -15.1    15.1
+2 PC2          9.7    -0.1     0.1</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>PC1 = 12.8%</b>：两组的 PC1 中心相差约 30 个单位（−15.1 vs +15.1）；分群很明显。</li>
+            <li><b>PC2 = 9.7%</b>：PC2 中心几乎相同（−0.1 vs 0.1），不承载组间差异。</li>
+            <li><b>解释边界</b>：因为 group 与 batch 完全重合，PC1 的分离不能归因于处理；这是本章的核心判断。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>看到 PCA 分开就写「处理导致表达谱明显改变」。先看设计表：若处理与批次完全重合，只能说「处理/批次混合效应」。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 8, "vars": { "mat": "2000 × 12" }, "out": "", "note": "按样本表顺序取列", "dataframe": null },
+          { "line": 12, "vars": { "pca": "prcomp" }, "out": "", "note": "对样本（转置后）做 PCA", "dataframe": null },
+          { "line": 13, "vars": { "var": "numeric" }, "out": "", "note": "计算每个主成分的方差解释率", "dataframe": null },
+          { "line": 17, "vars": {}, "out": "PC1 12.8% (centers −15.1 / +15.1)；PC2 9.7%", "note": "分离明显，但 group 与 batch 重合，不能归因", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 画 PCA 图：颜色与形状必须能回答设计问题</h2>
+      <p>PCA 图至少有三种标记：颜色、形状、分组椭圆。这里用颜色区分 group、形状区分 batch；当两种标记完全重合时，混杂一眼可见。</p>
+
+      <article class="example-card" id="ch17-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：fig_pca.svg</h3>
+          <div class="ex-meta"><span class="tag">ggplot2</span><span class="tag green">交付物</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch17-ex-03"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(edgeR); library(ggplot2)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+y &lt;- DGEList(counts = mat, group = meta$group)
+y &lt;- y[filterByExpr(y, group = meta$group), , keep.lib.sizes = FALSE]
+lcpm &lt;- cpm(calcNormFactors(y), log = TRUE)
+pca &lt;- prcomp(t(lcpm), scale. = TRUE)
+var &lt;- round(100 * pca$sdev^2 / sum(pca$sdev^2), 1)
+scores &lt;- as.data.frame(pca$x[, 1:2]) |&gt;
+  rownames_to_column("sample_id") |&gt;
+  left_join(meta, by = "sample_id")
+p &lt;- ggplot(scores, aes(PC1, PC2, colour = group, shape = batch)) +
+  geom_point(size = 2.2) +
+  scale_colour_manual(values = c(control = "#56B4E9", hypoxia = "#D55E00")) +
+  scale_shape_manual(values = c(batch1 = 16, batch2 = 17)) +
+  labs(x = paste0("PC1 (", var[1], "%)"), y = paste0("PC2 (", var[2], "%)"),
+       colour = "Group", shape = "Batch") +
+  theme_classic(base_size = 9)
+dir.create(here::here("figures"), showWarnings = FALSE)
+ggsave(here::here("figures/fig_pca.svg"), p, width = 89, height = 70, units = "mm")
+data.frame(
+  file = "figures/fig_pca.svg",
+  exists = file.exists(here::here("figures/fig_pca.svg")),
+  PC1_pct = var[1], PC2_pct = var[2]
+)</code></pre>
+        <div class="ex-output" data-output-for="ch17-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch17-ex-03">                 file exists PC1_pct PC2_pct
+1 figures/fig_pca.svg   TRUE    12.8     9.7</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>scores</b>：样本得分与元数据按 sample_id 连接；顺序不靠记忆。</li>
+            <li><b>颜色 + 形状</b>：group 与 batch 一一对应，图上一眼看出完全混杂。</li>
+            <li><b>轴标签带方差</b>：PC1 (12.8%)、PC2 (9.7%)，读者知道这张图解释了多少信息。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只按 group 着色，不标 batch；读者会自然把分群解释成处理效应。PCA 图的设计表信息必须画进去。</p>
+        </div>
+      </article>
+
+      <h2>4. 热图：高变基因的模式</h2>
+      <p>热图选前 60–500 个高变基因，按基因做 z-score；样本聚类常与分组一致，但同样受批次驱动。热图回答「哪些基因一起变」，不回答「为什么变」。</p>
+
+      <figure class="plot-stage" data-figure="ch17-heatmap">
+        <div class="plot-stage-head">
+          <span>图 17.2 · 前 60 个高变基因（z-score）</span>
+          <a href="../assets/figures/chapters/ch17-heatmap.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch17-heatmap.svg"
+               alt="12 个样本 × 前 60 个高变基因的热图，按基因做 z-score；样本按 control 6 个、hypoxia 6 个排列，两组的颜色模式明显不同，但组与批次重合使差异无法归因。"
+               width="1200" height="590">
+        </div>
+        <figcaption>图 17.2 · 前 60 个高变基因的热图；n = 12 个样本；每行按基因做 z-score；样本按 group 排序（C1–C6 对照，H1–H6 低氧）；组间模式差异明显，但 group 与 batch 完全重合，热图不能证明处理效应。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch17_heatmap.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <article class="example-card" id="ch17-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：fig_heatmap.svg（top 500 + 聚类）</h3>
+          <div class="ex-meta"><span class="tag">pheatmap</span><span class="tag green">交付物</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch17-ex-04"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(edgeR); library(pheatmap)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+y &lt;- DGEList(counts = mat, group = meta$group)
+y &lt;- y[filterByExpr(y, group = meta$group), , keep.lib.sizes = FALSE]
+lcpm &lt;- cpm(calcNormFactors(y), log = TRUE)
+top &lt;- order(apply(lcpm, 1, var), decreasing = TRUE)[1:500]
+ann &lt;- data.frame(group = meta$group, batch = meta$batch,
+                  row.names = meta$sample_id)
+dir.create(here::here("figures"), showWarnings = FALSE)
+ph &lt;- pheatmap(lcpm[top, ], annotation_col = ann, show_rownames = FALSE,
+               cluster_cols = TRUE, fontsize = 6, silent = TRUE,
+               color = viridisLite::viridis(100),
+               annotation_colors = list(
+                 group = c(control = "#56B4E9", hypoxia = "#D55E00"),
+                 batch = c(batch1 = "#56B4E9", batch2 = "#D55E00")))
+svglite::svglite(file = here::here("figures/fig_heatmap.svg"),
+                 width = 7, height = 8)
+grid::grid.draw(ph$gtable)
+invisible(dev.off())
+data.frame(
+  file = "figures/fig_heatmap.svg",
+  exists = file.exists(here::here("figures/fig_heatmap.svg")),
+  genes = length(top), samples = ncol(lcpm)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch17-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch17-ex-04">                     file exists genes samples
+1 figures/fig_heatmap.svg   TRUE   500      12</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>top 500</b>：按基因方差排序取前 500；行太多会看不清，太少则不稳定。</li>
+            <li><b>annotation_col</b>：样本列注释 group 与 batch；两个注释条完全同色。</li>
+            <li><b>聚类</b>：列聚类常把 6 vs 6 分开；这仍然不能区分处理与批次。</li>
+            <li><b>SVG 输出</b>：pheatmap 不直接写 SVG，用 svglite 设备绘制 gtable。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>热图不标样本注释、不说明 z-score 是按行还是按列；或把聚类顺序当成「样本亲缘关系」。聚类只是距离算法的结果。</p>
+        </div>
+      </article>
+
+      <h2>5. 聚类：分组一致≠处理有效</h2>
+      <p>层次聚类把样本分成两簇。把簇标签与 group、batch 交叉列表，会发现每一簇恰好 6 个对照/6 个低氧，也恰好 6 个 batch1/6 个 batch2——同一个事实的两种说法。</p>
+
+      <article class="example-card" id="ch17-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：hclust 聚类与设计交叉表</h3>
+          <div class="ex-meta"><span class="tag">hclust</span><span class="tag amber">混杂检查</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch17-ex-05"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(tibble); library(edgeR)
+})
+counts &lt;- read_csv(here::here("assets/data/pika_rnaseq_counts.csv"), show_col_types = FALSE) |&gt;
+  column_to_rownames("gene_id")
+meta &lt;- read_csv(here::here("assets/data/pika_rnaseq_metadata_clean.csv"),
+                 show_col_types = FALSE)
+mat &lt;- as.matrix(counts[, meta$sample_id])
+y &lt;- DGEList(counts = mat, group = meta$group)
+y &lt;- y[filterByExpr(y, group = meta$group), , keep.lib.sizes = FALSE]
+lcpm &lt;- cpm(calcNormFactors(y), log = TRUE)
+hc &lt;- hclust(dist(t(lcpm)), method = "average")
+cl &lt;- cutree(hc, k = 2)
+tab &lt;- table(cluster = cl, group = meta$group)
+bt &lt;- table(cluster = cl, batch = meta$batch)
+data.frame(
+  cluster = 1:2,
+  control = as.integer(tab[, "control"]),
+  hypoxia = as.integer(tab[, "hypoxia"]),
+  batch1 = as.integer(bt[, "batch1"]),
+  batch2 = as.integer(bt[, "batch2"])
+)</code></pre>
+        <div class="ex-output" data-output-for="ch17-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch17-ex-05">  cluster control hypoxia batch1 batch2
+1       1       6       0      6      0
+2       2       0       6      0      6</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>cluster 1 = 6 control = 6 batch1</b>；cluster 2 = 6 hypoxia = 6 batch2。</li>
+            <li><b>完全重合</b>：聚类结果与 group、batch 都 100% 一致；无法归因。</li>
+            <li><b>正确结论</b>：样本结构由「处理+批次」共同决定；要分离二者必须重新设计（每组跨批次）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>聚类后直接命名「低氧型样本」「对照型样本」并写进论文。聚类标签是算法产物；先与设计表交叉，再决定能说什么。</p>
+        </div>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：样本结构报告</h2>
+        <p>把本章操作串成 <code>R/17_multivariate.R</code>，产出两张图与一段结构判断。</p>
+        <ol class="task-steps">
+          <li><b>变换</b>：过滤低表达、归一化、logCPM；记录保留基因数。</li>
+          <li><b>PCA</b>：PC1/PC2 方差、样本得分；按 group 与 batch 双重标记。</li>
+          <li><b>热图</b>：前 500 高变基因 + 样本注释；按行 z-score。</li>
+          <li><b>交叉表</b>：聚类簇 × group、簇 × batch；判断是否完全混杂。</li>
+          <li><b>交付</b>：<code>figures/fig_pca.svg</code> 与 <code>figures/fig_heatmap.svg</code>；报告中写「不能分离」的理由。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>PCA 图同时标 group 与 batch；轴标签含方差百分比。</li>
+            <li>热图注明 z-score 方向与前 500 基因的选择规则。</li>
+            <li>结论没有把「分群」写成「处理显著改变表达谱」。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: 'assets/data/does_not_exist.csv' does not exist in current working directory: 'C:/Users/Choi/Documents/ZCode/bioR'.</p>
+        <p><b>病因</b>：相对路径按当前工作目录解析，counts 文件不在那里。</p>
+        <p><b>修复</b>：用 <code>here::here("assets/data/…")</code> 定位；<code>file.exists()</code> 先确认。</p>
+        <p><b>预防</b>：全项目用 here()，不 setwd()。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: non-conformable arguments</p>
+        <p><b>病因</b>：矩阵乘法维度不匹配，常见于忘记 <code>t()</code> 转置样本×基因矩阵。</p>
+        <p><b>修复</b>：<code>dim()</code> 核对；PCA 输入应是样本 × 基因（<code>t(lcpm)</code>）。</p>
+        <p><b>预防</b>：进入 prcomp 前打印 <code>dim()</code>。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Can't select columns that don't exist.
+✖ Column `body_mass` doesn't exist.</p>
+        <p><b>病因</b>：样本表列名拼错，按列选择时失败。</p>
+        <p><b>修复</b>：用 <code>any_of()</code> 或核对 names；counts 列必须与 sample_id 完全一致。</p>
+        <p><b>预防</b>：join/select 前先 <code>intersect(names(x), meta$sample_id)</code>。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>无监督分析先看结构，不先看分组。</b>PCA/聚类告诉你样本如何相似，不告诉你为什么相似。把 group 与 batch 同时画进图里，是判断「能不能解释」的最低要求；完全重合时，任何组间差异都无法归因。</p>
+      </div>
+      <div class="repro">
+        <p>本章的 PCA 与热图都由脚本生成；样本顺序来自 <code>meta$sample_id</code>，不依赖文件名排序。图与交付物可以在清空 figures/ 后由示例脚本重建。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Expression structure was explored by principal component analysis of logCPM values (filterByExpr, TMM normalisation, prcomp with scaling); PC1 and PC2 explained 12.8% and 9.7% of variance, and hierarchical clustering of Euclidean sample distances separated the two groups. Because treatment and sequencing batch were completely confounded in this design, the separation cannot be attributed to hypoxia.</p>
+        <p class="small muted">中文：用 logCPM 的 PCA 探索表达结构（filterByExpr、TMM 归一化、prcomp 标准化）；PC1/PC2 解释 12.8%/9.7% 方差，样本欧氏距离的层次聚类把两组分开。由于处理与测序批次在本设计中完全重合，这种分离不能归因于低氧。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>多变量分析三步：先变换（logCPM）、再做无监督结构（PCA/热图/聚类）、最后回到设计表判断混杂。PC1 分开不等于处理有效；聚类一致不等于因果。图里必须同时出现 group 与 batch。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch17">
+        <li><label><input type="checkbox"><span>我知道为什么不能对原始 counts 直接做 PCA</span></label></li>
+        <li><label><input type="checkbox"><span>我会把 counts 转成 logCPM 并记录保留基因数</span></label></li>
+        <li><label><input type="checkbox"><span>我能读 PCA 的方差解释比例与样本得分</span></label></li>
+        <li><label><input type="checkbox"><span>我会在 PCA 图上同时标 group 与 batch</span></label></li>
+        <li><label><input type="checkbox"><span>我能画高变基因热图并说明 z-score 方向</span></label></li>
+        <li><label><input type="checkbox"><span>我会用交叉表检查聚类与设计是否完全重合</span></label></li>
+        <li><label><input type="checkbox"><span>我知道无监督分群只能生成假设，不能证明处理效应</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch17">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：多变量与聚类",
+          "questions": [
+            { "type": "mcq", "q": "为什么不能对原始 counts 直接做 PCA？",
+              "options": ["counts 不能转置", "方差随均值增长，高表达基因支配", "PCA 只接受正态数据", "样本数太少"], "answer": 1,
+              "explain": "counts 的均值-方差关系会让高表达基因主导；先 logCPM/VST。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "PCA 图上 PC1 把两组分开，最先应该检查什么？",
+              "options": ["p 值", "设计表中 group 与 batch 是否重合", "PC2 的颜色", "样本文件名"], "answer": 1,
+              "explain": "分群可能由批次造成；先看设计表，再决定能否归因。", "skill": "design", "difficulty": 2 },
+            { "type": "fill", "q": "对样本×基因矩阵做 PCA 前要转置：prcomp(____(lcpm), scale. = TRUE)。",
+              "answer": ["t"], "explain": "prcomp 的输入行是样本，所以 t(lcpm)。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "热图聚类把 6 个对照和 6 个低氧分开，就证明处理导致表达差异。",
+              "answer": false,
+              "explain": "若 group 与 batch 重合，聚类同样受批次驱动，不能证明处理。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "PC1 解释 12.8% 方差说明？",
+              "options": ["PC1 不重要", "PC1 只承载了约八分之一的总变异", "处理效应占 12.8%", "模型拟合 12.8%"], "answer": 1,
+              "explain": "方差比例是描述，不是效应量；剩余变异仍很大。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "热图的 z-score 按行做，表示每个基因在样本间的相对高低。",
+              "answer": true,
+              "explain": "按行标准化后颜色表示该基因相对自身均值的偏离。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "聚类簇 × group 交叉表完全对角，最合理的结论是？",
+              "options": ["处理显著", "聚类与分组一致，但可能与 batch 重合", "样本没有结构", "需要再做 t 检验"], "answer": 1,
+              "explain": "还要与 batch 交叉；完全重合时不能归因。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：按基因方差选前 500 个高变基因。",
+              "code": "top <- order(apply(lcpm, 1, ____), decreasing = TRUE)[1:500]",
+              "blanks": [ { "answer": ["var"] } ],
+              "explain": "apply(lcpm, 1, var) 计算每个基因的方差。", "skill": "syntax", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 figures/；图注写 n、方差比例与混杂判断。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>fig_pca.svg</code></td><td>logCPM PCA，group 颜色 + batch 形状</td><td>ch18 DE 前的结构检查</td></tr>
+            <tr><td><code>fig_heatmap.svg</code></td><td>前 500 高变基因热图 + 样本注释</td><td>ch18 火山图对照</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：第 18 章进入差异表达——counts → DESeq2 → shrunken log2FC → FDR → 火山图与富集。设计公式必须处理本章发现的批次问题。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#pca-cluster-heatmap">速查：PCA、聚类与热图</a>
+          <a class="btn" href="../cheatsheets.html#figure-qc">速查：图形质检</a>
+          <a class="btn" href="../bioviz.html">生物绘图专区</a>
+          <a class="btn" href="../clinic.html#case-counts-pca">病例：原始 counts 做 PCA</a>
+          <a class="btn" href="../datasets.html#pika-rnaseq-counts">数据集：RNA-seq counts</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

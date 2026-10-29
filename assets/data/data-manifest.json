@@ -1,0 +1,96 @@
+{
+  "generated": "2026-10-28T22:43:16Z",
+  "seed": 20261027,
+  "files": [
+    {
+      "file": "pika_physiology.csv",
+      "rows": 60,
+      "cols": 11,
+      "simulated": true,
+      "sha256": "3b82ffb00d8dc07ed4c3b330607ce95494d8b3d6e5564b7413179d75d63f7a9f",
+      "description": "pika physiology survey (simulated)",
+      "chapters": ["ch03", "ch06", "ch08", "ch10", "ch11", "ch12", "ch13"]
+    },
+    {
+      "file": "pika_repeated.csv",
+      "rows": 36,
+      "cols": 6,
+      "simulated": true,
+      "sha256": "301fce20143e769a38f67c448f98fd65db887bb46e9051d4fcb2514c4fee0bf8",
+      "description": "repeated measures, 12 ids × 3 visits (simulated)",
+      "chapters": ["ch11", "ch15"]
+    },
+    {
+      "file": "pika_survival.csv",
+      "rows": 60,
+      "cols": 6,
+      "simulated": true,
+      "sha256": "7ac3751eb95a172a561ae072f9f81d4ff73d7778d3500941b907edacb92f7ec0",
+      "description": "survival experiment with censoring (simulated)",
+      "chapters": ["ch13", "ch16"]
+    },
+    {
+      "file": "pika_rnaseq_counts.csv",
+      "rows": 2000,
+      "cols": 14,
+      "simulated": true,
+      "sha256": "ac27c2ad902cd45373ce39c4ebd56b4ccfbaf1c1b04edd6798fd55be0e722eac",
+      "description": "RNA-seq raw counts 2000 × 12 (simulated)",
+      "chapters": ["ch07", "ch17", "ch18"]
+    },
+    {
+      "file": "pika_rnaseq_metadata_raw.csv",
+      "rows": 12,
+      "cols": 5,
+      "simulated": true,
+      "sha256": "a4e6d082927bfacf6abfc9a69ebbce05df4982c25bb3a83582fe5a038fa3146d",
+      "description": "RNA-seq sample sheet, raw ids (simulated)",
+      "chapters": ["ch04", "ch07"]
+    },
+    {
+      "file": "pika_rnaseq_metadata_clean.csv",
+      "rows": 12,
+      "cols": 5,
+      "simulated": true,
+      "sha256": "8b8753b50e55921be6551d62a833488cb3954a82b3b27fc4a6c736429f061942",
+      "description": "RNA-seq sample sheet, clean ids (simulated)",
+      "chapters": ["ch17", "ch18"]
+    },
+    {
+      "file": "pika_annotation.csv",
+      "rows": 2000,
+      "cols": 5,
+      "simulated": true,
+      "sha256": "49e46c89a189369a3dbfb808b77f6807137acf8555df455cfba200491fff6b2f",
+      "description": "gene annotation with GO/KEGG (simulated)",
+      "chapters": "ch18"
+    },
+    {
+      "file": "plate_reader_raw.csv",
+      "rows": 96,
+      "cols": 4,
+      "simulated": true,
+      "sha256": "008b4652e0dc4df2dc3ad0dfc85eda5db18fa3e38a2b376965c24a3ca2d9401e",
+      "description": "plate reader export with 3 comment lines (simulated)",
+      "chapters": "ch04"
+    },
+    {
+      "file": "pika_lab_notebook.xlsx",
+      "rows": "2 sheets",
+      "cols": "2 sheets",
+      "simulated": true,
+      "sha256": "8751e8ba1f1f6c3f8d877d7f0798a8a52a027b79a51e69adb91e759cb9ed39c5",
+      "description": "lab notebook, 2 sheets (simulated)",
+      "chapters": "ch04"
+    },
+    {
+      "file": "data-dictionary.csv",
+      "rows": 48,
+      "cols": 7,
+      "simulated": true,
+      "sha256": "1c5d1581a2cae71c07375dca593f685505a4b2f5dcf607790583c8e0cd7198c8",
+      "description": "data dictionary for all teaching files",
+      "chapters": "all"
+    }
+  ]
+}

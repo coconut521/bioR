@@ -1,0 +1,5 @@
+raw_mean   raw_sd 
+   164.3     15.9 
+log_mean   log_sd 
+     5.1      0.1 
+[1] 0.565

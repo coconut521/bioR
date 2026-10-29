@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 5 章 函数、控制流与模拟：把重复分析变成工具 | bioR</title>
+<meta name="description" content="用 qc_summary() 与 purrr::map_dfr() 批量 QC 三个批次；用 replicate() 模拟 1000 次抽样理解标准误随 n 变化；含 tryCatch 容错、T/F 陷阱与预分配。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch05" data-part="I">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 5 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 05 · FUNCTIONS &amp; SIMULATION</span><span>STAGE I · PREPARE DATA</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">05</div>
+          <div class="cover-copy">
+            <h1>函数、控制流与模拟：把重复分析变成工具</h1>
+            <p class="cover-lede">同一段 QC 写第三遍的时候，就该把它写成函数了——然后让模拟替你回答「n 要多大」。</p>
+            <p class="cover-question"><b>本章科研问题：</b>三个批次各一个 CSV，怎样用同一套 QC 一次跑完？为什么 n 越大均值越稳？</p>
+            <div class="cover-meta">
+              <span>90–120 MIN</span><span>前置 ch04</span><span>数据 3 批次 CSV · pika_physiology.csv</span><span>交付 R/qc_functions.R · fig_sampling_error.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>用 <code>function()</code> 写出带参数、有返回值的 <code>qc_summary(df)</code>，并用 <code>stopifnot()</code> 校验输入。</li>
+          <li>读写 <code>if/else</code> 与 <code>for</code>，知道循环要先分配再填空位。</li>
+          <li>用 <code>purrr::map_dfr()</code> 把同一函数应用到多个文件并拼成一张表。</li>
+          <li>用 <code>tryCatch()</code> 捕获错误，让一个坏文件不中断整批处理。</li>
+          <li>用 <code>replicate()</code> + <code>set.seed()</code> 模拟 1000 次抽样，画标准误随 n 的变化。</li>
+          <li>说清「标准误」与「标准差」的区别。</li>
+        </ul>
+        <p class="small muted">前置：第 4 章；数据：三个批次 CSV（本章现场生成）、<code>pika_physiology.csv</code>；交付：<code>R/qc_functions.R</code>、<code>fig_sampling_error.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>三个批次的数据分别躺在三个 CSV 里，导师要的却是<b>同一套</b> QC。复制粘贴三次？改一处就得改三处。这一章把重复分析<b>封装成函数</b>、用 <code>map</code> <b>批量执行</b>、用 <code>tryCatch</code> <b>隔离故障</b>——然后借同样的思路做一件事模拟实验：亲手看到 n 变大时均值如何变稳。</p>
+      </div>
+
+      <h2>1. 函数：把重复的分析变成工具</h2>
+      <p>函数 = 输入（参数）→ 处理 → 输出（返回值）。写函数的头一条纪律是<b>校验输入</b>：<code>stopifnot()</code> 把「调用者拿错了数据」变成一行明确的报错，而不是三行之后莫名其妙的结果。</p>
+
+      <article class="example-card" id="ch05-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：qc_summary(df)——带输入校验的 QC 函数</h3>
+          <div class="ex-meta"><span class="tag">function · stopifnot</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch05-ex-01"><code class="r">qc_summary &lt;- function(df) {
+  stopifnot(is.data.frame(df), "hemoglobin_g_l" %in% names(df))
+  tibble::tibble(
+    n_total = nrow(df),
+    n_missing = sum(is.na(df$hemoglobin_g_l)),
+    mean_hb = round(mean(df$hemoglobin_g_l, na.rm = TRUE), 1)
+  )
+}
+library(readr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+qc_summary(pika)</code></pre>
+        <div class="ex-output" data-output-for="ch05-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 1 × 3
+  n_total n_missing mean_hb
+    &lt;int&gt;     &lt;int&gt;   &lt;dbl&gt;
+1      60         2    164.</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：<code>function(df)</code> 定义参数；函数体最后一行的值就是返回值。</li>
+            <li><b>第 2 行</b>：<code>stopifnot()</code> 两条校验——是数据框、有血红蛋白列。传错对象立即报错。</li>
+            <li><b>第 3–7 行</b>：返回一张一行小表：总行数、缺失数、均值。缺失数与第 4 章 QC 对账（2 个 NA = 溶血）。</li>
+            <li><b>第 11 行</b>：对真实数据调用。真实均值 164.3 g/L（n = 58 有效）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>函数体里悄悄引用全局变量（比如直接用 <code>pika</code> 而不用参数 <code>df</code>）——换个数据就失效。函数只依赖自己的参数，才能被复用。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "定义 qc_summary：参数 df", "dataframe": null },
+          { "line": 2, "vars": { "qc_summary": "function" }, "out": "", "note": "stopifnot 校验输入", "dataframe": null },
+          { "line": 11, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 1 × 3", "note": "对 60 行样本表调用", "dataframe": {
+            "columns": [ { "name": "n_total", "type": "int" }, { "name": "n_missing", "type": "int" }, { "name": "mean_hb", "type": "dbl" } ],
+            "rows": [ ["60", "2", "164."] ], "highlight": [0], "note": "一行 QC 结果：行数 / 缺失 / 均值" } }
+        ] }</script>
+      </article>
+
+      <h2>2. 控制流：if、for 与陷阱</h2>
+      <p>脚本有了分叉和循环才像程序：<code>if/else</code> 做判断，<code>for</code> 做重复。R 的循环没问题，问题出在两种经典写法上——循环里用 <code>c()</code> 反复增长向量，以及把 <code>T</code>/<code>F</code> 当常量用。</p>
+
+      <article class="example-card" id="ch05-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：for 循环的正确写法与 T/F 陷阱</h3>
+          <div class="ex-meta"><span class="tag">for · preallocate</span><span class="tag blue">建模前置</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch05-ex-04"><code class="r">n &lt;- 5
+res &lt;- numeric(0)
+for (i in 1:n) res &lt;- c(res, sqrt(i))  # 每轮都新建一个更长的向量
+res
+identical(res, sqrt(1:n))
+
+fast &lt;- numeric(n)
+for (i in 1:n) fast[i] &lt;- sqrt(i)      # 先分配、再填空位
+identical(res, fast)
+
+T &lt;- 0                                  # T 不是保留字，会被覆盖
+if (T) "run" else "skip"
+rm(T)
+TRUE == 1</code></pre>
+        <div class="ex-output" data-output-for="ch05-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 1.000000 1.414214 1.732051 2.000000 2.236068
+[1] TRUE
+[1] TRUE
+[1] "skip"
+[1] TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3 行</b>：每个元素 append 一次，R 都要复制整个向量再长一格——n 大时是 O(n²) 的隐形减速。n = 5 察觉不到，n = 5 万就很痛。</li>
+            <li><b>第 6–7 行</b>：正确写法：<code>numeric(n)</code> 一次分配好 n 个空位，循环里按位置填。</li>
+            <li><b>第 10–12 行</b>：<code>T</code> 只是个普通变量！<code>T &lt;- 0</code> 之后 <code>if (T)</code> 走了 else 分支。<code>TRUE</code> 是保留字，永远覆盖不了。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>set.seed()</code> 放进循环体里：每一轮都重置同一颗种子，模拟出的「1000 次」其实是同一次抽样复制 1000 遍。种子放循环<b>外</b>，只放一次。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "n": "5" }, "out": "", "note": "示例规模 n = 5", "dataframe": null },
+          { "line": 3, "vars": { "res": "num[5]" }, "out": "", "note": "慢写法：c() 逐轮增长", "dataframe": null },
+          { "line": 4, "vars": { "res": "num[5]" }, "out": "1.000000 1.414214 …", "note": "结果正确——但写法错了", "dataframe": null },
+          { "line": 7, "vars": { "fast": "num[5]" }, "out": "TRUE", "note": "先分配再填位，结果一致", "dataframe": null },
+          { "line": 11, "vars": { "T": "0" }, "out": "\"skip\"", "note": "T 被覆盖成 0，if 走了 else", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 批量处理：map 把函数应用到每个文件</h2>
+      <p>有了函数，三个文件就是三次调用。<code>purrr::map_dfr()</code> 逐个执行、把每个返回的小表<b>按行拼接</b>成一张总表——这就是「函数 × 批量」的组合拳。</p>
+
+      <article class="example-card" id="ch05-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：map_dfr 批量 QC 三个批次</h3>
+          <div class="ex-meta"><span class="tag">map_dfr · map2</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch05-ex-02"><code class="r">library(readr); library(purrr); library(dplyr)
+make_batch_file &lt;- function(batch, n, seed) {
+  set.seed(seed)  # 每个文件一次种子：种子跟着数据走，不放循环外层
+  f &lt;- tempfile(fileext = ".csv")
+  write_csv(data.frame(id = sprintf("%s%02d", batch, 1:n),
+                       hemoglobin_g_l = round(rnorm(n, 155, 12), 1)), f)
+  f
+}
+files &lt;- c(make_batch_file("B1", 5, 11), make_batch_file("B2", 5, 22),
+           make_batch_file("B3", 5, 33))
+qc_batch &lt;- function(batch, path) {
+  d &lt;- read_csv(path, show_col_types = FALSE)
+  tibble(batch = batch, n = nrow(d),
+         mean_hb = round(mean(d$hemoglobin_g_l), 1))
+}
+map2_dfr(c("B1", "B2", "B3"), files, qc_batch)</code></pre>
+        <div class="ex-output" data-output-for="ch05-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 3
+  batch     n mean_hb
+  &lt;chr&gt; &lt;int&gt;   &lt;dbl&gt;
+1 B1        5    150.
+2 B2        5    162.
+3 B3        5    151.</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1–8 行</b>：现场生成三个批次 CSV（示例自包含；真实项目里它们来自仪器）。种子固定，每次重跑数据一致。</li>
+            <li><b>第 9–13 行</b>：<code>qc_batch(batch, path)</code> 读一个文件、返回一行小表——和示例 1 的 <code>qc_summary()</code> 同一思路。</li>
+            <li><b>第 14 行</b>：<code>map2_dfr(labels, files, qc_batch)</code> 把标签和路径<b>成对</b>传入（<code>map2</code> 两个输入并行迭代），三张小表按行拼成总表。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p><code>map_dfr(files, qc_batch)</code> 里 <code>qc_batch</code> 又调用了 <code>batch</code> 变量——那个变量并不存在，报 <code>object 'batch' not found</code>。批量函数需要的<b>每一列输入</b>都得来自 map 系列的参数（一个输入用 <code>map</code>，两个用 <code>map2</code>）。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "挂载 purrr 与 dplyr", "dataframe": null },
+          { "line": 9, "vars": { "files": "chr[3]" }, "out": "", "note": "生成三个批次 CSV（种子 11/22/33）", "dataframe": null },
+          { "line": 14, "vars": { "files": "chr[3]" }, "out": "# A tibble: 3 × 3", "note": "map2 逐对调用、按行拼接", "dataframe": {
+            "columns": [ { "name": "batch", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "mean_hb", "type": "dbl" } ],
+            "rows": [ ["B1", "5", "150."], ["B2", "5", "162."], ["B3", "5", "151."] ], "highlight": [0], "note": "一个函数，三个批次，一张总表" } }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="pipeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "三个文件，一个函数，数据怎么流？",
+          "frames": [
+            { "stages": [
+              { "label": "3 个 CSV", "rows": 5, "cols": 2 },
+              { "label": "qc_batch()", "rows": 1, "cols": 3 },
+              { "label": "map_dfr 拼接", "rows": 3, "cols": 3 },
+              { "label": "QC 总表", "rows": 3, "cols": 3 }
+            ], "active": 0, "note": "每个文件先被 qc_batch() 变成 1 行 × 3 列的小表——函数在逐个文件工作。" },
+            { "stages": [
+              { "label": "3 个 CSV", "rows": 5, "cols": 2 },
+              { "label": "qc_batch()", "rows": 1, "cols": 3 },
+              { "label": "map_dfr 拼接", "rows": 3, "cols": 3 },
+              { "label": "QC 总表", "rows": 3, "cols": 3 }
+            ], "active": 3, "note": "map_dfr 把三张小表按行拼成 3 行总表。想换 QC 标准？只改函数一处。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>4. 容错：tryCatch 别让一个坏文件毁掉整批</h2>
+      <p>批量处理的命门是<b>一个文件出错、整批中断</b>。仪器崩溃、同事改列名、编码错乱——都会发生。<code>tryCatch()</code> 把「出错」变成一种可以处理的结果：坏了就记一行，其余照跑。</p>
+
+      <article class="example-card" id="ch05-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：tryCatch 让批量 QC 不中断</h3>
+          <div class="ex-meta"><span class="tag">tryCatch</span><span class="tag orange">稳健性</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch05-ex-05"><code class="r">library(readr); library(purrr); library(dplyr)
+make_batch_file &lt;- function(batch, n, seed) {
+  set.seed(seed)
+  f &lt;- tempfile(fileext = ".csv")
+  write_csv(data.frame(id = sprintf("%s%02d", batch, 1:n),
+                       hemoglobin_g_l = round(rnorm(n, 155, 12), 1)), f)
+  f
+}
+files &lt;- c(make_batch_file("B1", 5, 11), make_batch_file("B2", 5, 22),
+           make_batch_file("B3", 5, 33))
+# 同事把第三个文件改成了体重表：列名对不上了
+write_csv(data.frame(id = "B301", weight_g = 44), files[3])
+qc_batch &lt;- function(batch, path) {
+  tryCatch({
+    d &lt;- read_csv(path, show_col_types = FALSE)
+    if (!"hemoglobin_g_l" %in% names(d)) stop("missing hemoglobin_g_l column")
+    tibble(batch = batch, n = nrow(d),
+           mean_hb = round(mean(d$hemoglobin_g_l), 1), note = "ok")
+  }, error = function(e) {
+    tibble(batch = batch, n = NA, mean_hb = NA, note = conditionMessage(e))
+  })
+}
+map2_dfr(c("B1", "B2", "B3"), files, qc_batch)</code></pre>
+        <div class="ex-output" data-output-for="ch05-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 4
+  batch     n mean_hb note                         
+  &lt;chr&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;                        
+1 B1        5    150. ok                           
+2 B2        5    162. ok                           
+3 B3       NA     NA  missing hemoglobin_g_l column</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 10 行</b>：故意制造一个坏文件（列名被改）——模拟真实世界里的「同事改表」。</li>
+            <li><b>第 12–14 行</b>：tryCatch 的「尝试」块：读入后先验证关键列存在，缺列主动 <code>stop()</code>。</li>
+            <li><b>第 15–17 行</b>：error 处理器返回<b>同结构</b>的一行（n、mean 填 NA，note 记错误信息）——坏文件不炸整批，而是留下一条记录。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>error 处理器返回<b>空</b>或返回 <code>NULL</code>——坏文件就从结果里消失了，批量表悄悄少一行。失败必须留下痕迹：NA 行 + note 列，事后才追查得到。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 10, "vars": { "files": "chr[3]" }, "out": "", "note": "B3 的列名被改坏", "dataframe": null },
+          { "line": 12, "vars": { "files": "chr[3]" }, "out": "", "note": "tryCatch 包住整个 QC", "dataframe": null },
+          { "line": 21, "vars": { "files": "chr[3]" }, "out": "# A tibble: 3 × 4", "note": "B1/B2 正常，B3 记录错误", "dataframe": {
+            "columns": [ { "name": "batch", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "note", "type": "chr" } ],
+            "rows": [ ["B1", "5", "ok"], ["B2", "5", "ok"], ["B3", "NA", "missing hemoglobin_g_l column"] ], "highlight": [2], "note": "失败留下痕迹，而不是消失" } }
+        ] }</script>
+      </article>
+
+      <h2>5. 模拟：为什么 n 越大均值越稳</h2>
+      <p>模拟是统计的显微镜。我们造一个<b>已知答案</b>的总体（μ = 155、σ = 12 g/L 的正态分布），反复抽样、算均值，看均值的波动如何随 n 变化。<code>replicate()</code> = 「把一个表达式跑 N 遍并收集结果」，<code>set.seed()</code> 保证下次重跑结果一模一样。</p>
+
+      <article class="example-card" id="ch05-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：replicate 模拟 1000 次抽样</h3>
+          <div class="ex-meta"><span class="tag">replicate · set.seed</span><span class="tag blue">理解统计</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch05-ex-03"><code class="r">set.seed(20261027)
+n_draw &lt;- 10
+sim &lt;- replicate(1000, {
+  s &lt;- rnorm(n_draw, 155, 12)
+  c(mean = mean(s), sd = sd(s))
+})
+sim_m &lt;- t(sim)
+means &lt;- sim_m[, "mean"]
+c(mean_of_means = round(mean(means), 1),
+  se_of_means   = round(sd(means), 1))
+round(12 / sqrt(n_draw), 2)</code></pre>
+        <div class="ex-output" data-output-for="ch05-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">mean_of_means   se_of_means 
+        155.2           3.8 
+[1] 3.79</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1 行</b>：固定随机种子——重跑脚本，模拟结果一字不差（可复现的第一原则）。</li>
+            <li><b>第 3–6 行</b>：每次抽 n = 10 个个体、记下这组的均值与标准差；<code>replicate</code> 重复 1000 次，得 1000 个均值。</li>
+            <li><b>第 9–11 行</b>：均值们的均值 ≈ 155（还原总体 μ）；均值们的标准差 ≈ 3.8——这就是<b>标准误</b>。</li>
+            <li><b>第 12 行</b>：理论标准误 σ/√n = 12/√10 = 3.79，和模拟几乎重合——理论不是天上掉下来的。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把「均值的标准差」（3.8）当成「单个观测的标准差」（12）写进论文。它们差 √n 倍：n = 10 时，标准误只是标准差的 1/√10。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "固定种子 20261027", "dataframe": null },
+          { "line": 3, "vars": { "sim": "2 × 1000" }, "out": "", "note": "1000 次「抽 10 个算均值/标准差」", "dataframe": null },
+          { "line": 9, "vars": { "means": "num[1000]" }, "out": "155.2 3.8", "note": "均值的均值≈μ；均值的标准差=标准误", "dataframe": null },
+          { "line": 12, "vars": { "means": "num[1000]" }, "out": "3.79", "note": "理论 σ/√n 与模拟吻合", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="stats">
+        <script type="application/json" class="explainer-data">{
+          "question": "n 变大，什么变稳了？",
+          "frames": [
+            { "groups": [
+              { "label": "n = 2", "mean": 155, "sd": 8.5, "n": 1000 }
+            ], "effect": "波动带 = 12/√2 ≈ 8.5 g/L：抽 2 只，均值能差出半个批次。", "note": "每次抽 2 只、重复 1000 次：均值散得很开。" },
+            { "groups": [
+              { "label": "n = 10", "mean": 155, "sd": 3.8, "n": 1000 }
+            ], "effect": "波动带 = 12/√10 ≈ 3.8 g/L：n 扩 5 倍，波动减半多。", "note": "n = 10：均值集中在 155 附近一条窄带。" },
+            { "groups": [
+              { "label": "n = 40", "mean": 155, "sd": 1.9, "n": 1000 }
+            ], "effect": "波动带 = 12/√40 ≈ 1.9 g/L：√n 定律——想再减半，n 要翻 4 倍。", "note": "n = 40：均值几乎钉在总体 μ 上。" }
+          ]
+        }</script>
+      </div>
+
+      <figure class="plot-stage" data-figure="ch05-sampling-error">
+        <div class="plot-stage-head">
+          <span>图 5.1 · 标准误随 n 变化</span>
+          <a href="../assets/figures/chapters/ch05-sampling-error.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch05-sampling-error.svg"
+               alt="折线图显示 1000 次模拟抽样中样本均值的标准差随 n 增大而下降：n=2 时约 8.2 g/L，n=80 时约 1.4 g/L；虚线为理论标准误 σ/√n，两者几乎重合。"
+               width="712" height="440">
+        </div>
+        <figcaption>图 5.1 · 均值的标准误随 n 变化；n = 2/5/10/20/40/80（每个 n 模拟 1000 次，σ = 12 g/L），实线为模拟值，虚线为理论值 σ/√n；纵轴是均值的标准差（标准误），不是单个观测的标准差。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch05_sampling.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：qc_functions.R 与模拟图</h2>
+        <p>把本章操作串成 <code>R/qc_functions.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>函数</b>：把 <code>qc_summary(df)</code> 写进 <code>R/qc_functions.R</code>（含 <code>stopifnot()</code>），<code>source()</code> 后对 <code>pika_physiology.csv</code> 调用验证（n_total = 60、n_missing = 2）。</li>
+          <li><b>批量</b>：用 <code>map_dfr()</code> 对三个批次 CSV 跑 <code>qc_summary()</code>，输出 3 行 QC 总表。</li>
+          <li><b>容错</b>：用 <code>tryCatch()</code> 改造批量调用，坏文件记 NA 行而不中断。</li>
+          <li><b>模拟</b>：跑 <code>tools/figures/fig_ch05_sampling.R</code> 生成 <code>fig_sampling_error.svg</code>；确认 n = 80 时标准误约 1.3–1.4 g/L。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>把 <code>qc_summary()</code> 喂一个错误对象（如 <code>qc_summary(1:10)</code>），必须立刻报错——校验在工作。</li>
+            <li>种子只出现一次；删掉 <code>set.seed()</code> 重跑，均值会变——这解释了为什么脚本必须固定种子。</li>
+            <li>QC 总表行数 = 文件数；tryCatch 版本里坏文件有 NA 行和 note。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in qc_summary(plate_raw) : "hemoglobin_g_l" %in% names(df) is not TRUE</p>
+        <p><b>病因</b>：给 <code>qc_summary()</code> 喂错了表——酶标仪数据没有血红蛋白列。这是 <code>stopifnot()</code> 在替你把关。</p>
+        <p><b>修复</b>：核对输入 <code>names(df)</code>；确认真该处理这张表再调用。</p>
+        <p><b>预防</b>：每个函数开头校验输入；宁可第一行报错，不要第五行出错结果。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: object 'n_draw' not found</p>
+        <p><b>病因</b>：函数体里用了全局变量 <code>n_draw</code>——在自己电脑能跑，换环境（source 到新会话、Rscript）就崩。</p>
+        <p><b>修复</b>：把 <code>n_draw</code> 变成函数参数 <code>function(df, n_draw)</code>，调用时显式传入。</p>
+        <p><b>预防</b>：函数只依赖参数；调试时用 <code>codetools::findGlobals(f)</code> 查隐性依赖。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: C stack usage  7971912 is too close to the limit</p>
+        <p><b>病因</b>：递归/循环写成没有终止条件的死循环，一层层压栈直到爆掉。</p>
+        <p><b>修复</b>：检查循环变量是否更新、递归是否有 base case；<code>while</code> 循环补上退出条件。</p>
+        <p><b>预防</b>：能数出次数的重复用 <code>for</code>/<code>map</code>；<code>while</code> 只在「不知道要循环几次」时用。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>标准误不是标准差。</b>标准差（σ ≈ 12）描述个体之间的真实差异，它不随 n 变；标准误（σ/√n）描述「样本均值这个估计量」的不确定性，n 越大越稳。模拟回答的是「估计有多准」，不能替代实验设计——n 的最终选择要靠功效分析（第 30 号速查表与第 12 章）。</p>
+      </div>
+      <div class="repro">
+        <p>模拟结果因种子而异：<code>set.seed(20261027)</code> 之后，本页每个数字都可逐位复现。把种子写进脚本注释，审稿人问起时一句话答完。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">To quantify sampling variability, 1,000 random samples of size n were drawn from a normal population (μ = 155, σ = 12 g/L) using fixed seed 20261027; the standard error of the mean was estimated as the standard deviation of sample means and compared with the theoretical value σ/√n.</p>
+        <p class="small muted">中文：为量化抽样波动，从已知正态总体（μ = 155、σ = 12 g/L）以固定种子 20261027 抽取 1000 个容量为 n 的样本；以样本均值的标准差估计标准误，并与理论值 σ/√n 对照。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>重复三次以上的分析写成函数（校验输入、只依赖参数）；批量用 map/map2_dfr，坏文件用 tryCatch 留痕。模拟 1000 次抽样直观展示 σ/√n：n 变大变稳的是标准误，不是标准差。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch05">
+        <li><label><input type="checkbox"><span>我能写出带 <code>stopifnot()</code> 校验的函数并解释它为什么必要</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出循环里 <code>c()</code> 增长向量的问题与正确写法</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 <code>map_dfr()</code>/<code>map2_dfr()</code> 把一个函数应用到多个文件</span></label></li>
+        <li><label><input type="checkbox"><span>我能用 <code>tryCatch()</code> 让坏文件留下 NA 行而不是中断整批</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释 <code>set.seed()</code> 放在哪、为什么只放一次</span></label></li>
+        <li><label><input type="checkbox"><span>我能说出标准误与标准差的区别，并各举一个该用的场合</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch05">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：函数、控制流与模拟",
+          "questions": [
+            { "type": "mcq", "q": "R 函数的返回值是什么？",
+              "options": ["必须用 return() 显式声明", "函数体最后一行的值", "最后一个赋值的变量", "没有返回值"], "answer": 1,
+              "explain": "R 函数返回最后一行的值；return() 可用但通常多余。qc_summary() 最后一行是 tibble，所以返回那张表。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "在循环里写 res <- c(res, x) 会随 n 变大显著变慢。",
+              "answer": true,
+              "explain": "每次 append 都复制整个旧向量，总代价是 O(n²)；先 numeric(n) 分配再按位填是正确写法。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "T <- 0 之后，if (T) \"a\" else \"b\" 返回？",
+              "options": ["\"a\"", "\"b\"", "报错", "NA"], "answer": 1,
+              "explain": "T 不是保留字，被覆盖成 0（falsy），走 else。写作习惯：逻辑值永远写 TRUE/FALSE。", "skill": "syntax", "difficulty": 2 },
+            { "type": "fill", "q": "把两个输入成对传给函数的 purrr 动词：____(labels, files, qc_batch)。",
+              "answer": ["map2_dfr"], "explain": "map2_dfr 有两个输入、按行拼接；map_dfr 只有一个输入。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "tryCatch 的 error 处理器最不该做什么？",
+              "options": ["返回带 NA 的行", "返回 NULL 让坏文件消失", "记录错误信息", "返回与正常行相同的结构"], "answer": 1,
+              "explain": "失败必须留痕：NULL 让批量表悄悄少一行，事后无从追查。", "skill": "repro", "difficulty": 2 },
+            { "type": "mcq", "q": "σ = 12 时 n = 40 的理论标准误约为？",
+              "options": ["12", "3.0", "1.9", "0.3"], "answer": 2,
+              "explain": "σ/√n = 12/√40 ≈ 1.9。标准误随 √n 下降，不是线性下降。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "把 set.seed(42) 放进 for 循环内部，1000 次模拟结果会更多样。",
+              "answer": false,
+              "explain": "恰恰相反：每轮重置同一颗种子，抽出的样本全部相同——多样性为零。种子放循环外。", "skill": "repro", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：输入校验，要求 df 是数据框。",
+              "code": "stopifnot(____(df))",
+              "blanks": [ { "answer": ["is.data.frame"] } ],
+              "explain": "stopifnot() 里放逻辑表达式；不满足即报错。校验放函数第一行。", "skill": "syntax", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 R/ 与 figures/；函数文件先 source 再用。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>R/qc_functions.R</code></td><td>qc_summary() 等可复用 QC 函数</td><td>ch06 管道汇总、ch14 报告自动化</td></tr>
+            <tr><td><code>fig_sampling_error.svg</code></td><td>标准误随 n 变化的模拟图</td><td>ch12 功效分析的直觉起点</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：QC 函数产出的是一张行表；第 6 章用 dplyr 把整张样本表变成回答问题的答案（分组汇总、Table 1）。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#r-syntax">速查：R 基础语法</a>
+          <a class="btn" href="../cheatsheets.html#purrr">速查：purrr 与 apply</a>
+          <a class="btn" href="../cheatsheets.html#power">速查：样本量与功效</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 8 章 ggplot2 语法：把科研问题画成图 | bioR</title>
+<meta name="description" content="用图形语法回答三个探索问题：体重随海拔分布、血红蛋白与海拔关系、性别是否改变模式；含 mapping vs setting、分面、为什么不用柱状图与三张交付图。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch08" data-part="II">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 8 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 08 · GGPLOT2 GRAMMAR</span><span>STAGE II · EXPLORE</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">08</div>
+          <div class="cover-copy">
+            <h1>ggplot2 语法：把科研问题画成图</h1>
+            <p class="cover-lede">图不是一个函数画出来的，而是七层语法叠出来的——每一层都能说清「给图加了什么」。</p>
+            <p class="cover-question"><b>本章科研问题：</b>体重随海拔如何分布？血红蛋白与海拔什么关系？性别会改变这个模式吗？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch07</span><span>数据 pika_physiology.csv</span><span>交付 fig_explore_mass/hb/sex.svg</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>说出图形语法的七个部件，并解释每一层的作用。</li>
+          <li>根据问题选择 geom：分布用箱线 + 散点，关系用散点，比较用箱线。</li>
+          <li>分清 <b>映射</b>（<code>aes()</code> 里）与<b>设定</b>（<code>aes()</code> 外）。</li>
+          <li>用 <code>facet_wrap()</code> 回答「性别是否改变模式」。</li>
+          <li>解释为什么小 n 的组间比较不该用柱状图 + 误差线。</li>
+          <li>用 <code>ggsave()</code> 按 mm 尺寸导出三张交付图。</li>
+        </ul>
+        <p class="small muted">前置：第 7 章；数据：<code>pika_physiology.csv</code>；交付：<code>fig_explore_mass.svg</code>、<code>fig_explore_hb.svg</code>、<code>fig_explore_sex.svg</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>拿到数据的第一件事不是做检验，是<b>看图</b>。三个探索问题对应三张图：分布（体重 × 海拔）、关系（血红蛋白 × 海拔）、分组模式（再加性别分面）。这一章把「画图」翻译成「用七层语法说话」——图层清楚了，图就不需要调参玄学。</p>
+      </div>
+
+      <h2>1. 图形语法：data → aes → geom</h2>
+      <p>一张 ggplot 的基本句法：<code>ggplot(data, aes(...)) + geom_*()</code>。data 是画什么，aes 是列到视觉通道的映射，geom 是几何形状。图层用 <code>+</code> 叠加——每个 <code>+</code> 后面都是一层可解释的决定。</p>
+
+      <article class="example-card" id="ch08-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：第一张图——体重 × 海拔</h3>
+          <div class="ex-meta"><span class="tag">data · aes · geom</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch08-ex-01"><code class="r">library(readr); library(dplyr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+p &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  geom_jitter(width = .12, alpha = .45, size = .7)
+class(p)
+rlang::as_label(p$mapping$x)
+range(pika$body_mass_g)</code></pre>
+        <div class="ex-output" data-output-for="ch08-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "ggplot2::ggplot" "ggplot"          "ggplot2::gg"     "S7_object"      
+[5] "gg"             
+[1] "altitude_group"
+[1] 118 232</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：data = pika；<code>aes()</code> 把 x 映射到海拔组、y 映射到体重、fill 映射到组。</li>
+            <li><b>第 5–6 行</b>：两层 geom：箱线图画 IQR 与中位数，散点画出每个个体——<b>分布和 n 同时可见</b>。</li>
+            <li><b>第 7 行</b>：<code>class(p)</code> 确认它是一个 ggplot 对象（还没画，只是说明书）。</li>
+            <li><b>第 8–9 行</b>：映射的 x 是 <code>altitude_group</code>；原始体重范围 118–232 g。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 <code>fill = "steelblue"</code> 写进 <code>aes()</code> 里——R 会创建一个常量列「steelblue」并给你一个莫名其妙的离散标度。颜色是<b>设定</b>，放 <code>aes()</code> 外。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入样本表", "dataframe": null },
+          { "line": 4, "vars": { "p": "ggplot" }, "out": "", "note": "data + aes + 两个 geom 图层", "dataframe": null },
+          { "line": 7, "vars": { "p": "ggplot" }, "out": "ggplot2::ggplot …", "note": "ggplot 对象：图层的说明书", "dataframe": null },
+          { "line": 9, "vars": { "pika": "60 × 11" }, "out": "[1] 118 232", "note": "体重范围：两组极端值都在", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="plot-grammar">
+        <script type="application/json" class="explainer-data">{
+          "question": "每一层给图加了什么？",
+          "frames": [
+            { "layers": [
+              { "name": "data", "on": true, "note": "60 × 11 样本表" },
+              { "name": "aes", "on": true, "note": "x=海拔组, y=体重, fill=组" },
+              { "name": "geom_boxplot", "on": false },
+              { "name": "geom_jitter", "on": false },
+              { "name": "scale_fill_manual", "on": false },
+              { "name": "labs", "on": false },
+              { "name": "theme", "on": false }
+            ], "preview": "只有空坐标轴——数据和映射就位，还没有几何对象。" },
+            { "layers": [
+              { "name": "data", "on": true, "note": "60 × 11 样本表" },
+              { "name": "aes", "on": true, "note": "x=海拔组, y=体重, fill=组" },
+              { "name": "geom_boxplot", "on": true, "note": "IQR 箱 + 中位数线" },
+              { "name": "geom_jitter", "on": false },
+              { "name": "scale_fill_manual", "on": false },
+              { "name": "labs", "on": false },
+              { "name": "theme", "on": false }
+            ], "preview": "出现三个箱体——但看不出每组只有 20 个个体、分布是否重叠。" },
+            { "layers": [
+              { "name": "data", "on": true, "note": "60 × 11 样本表" },
+              { "name": "aes", "on": true, "note": "x=海拔组, y=体重, fill=组" },
+              { "name": "geom_boxplot", "on": true, "note": "IQR 箱 + 中位数线" },
+              { "name": "geom_jitter", "on": true, "note": "个体点 + 抖动" },
+              { "name": "scale_fill_manual", "on": false },
+              { "name": "labs", "on": false },
+              { "name": "theme", "on": false }
+            ], "preview": "分布可见：高海拔组整体更低，但三组重叠明显——这才是这张图存在的理由。" },
+            { "layers": [
+              { "name": "data", "on": true, "note": "60 × 11 样本表" },
+              { "name": "aes", "on": true, "note": "x=海拔组, y=体重, fill=组" },
+              { "name": "geom_boxplot", "on": true, "note": "IQR 箱 + 中位数线" },
+              { "name": "geom_jitter", "on": true, "note": "个体点 + 抖动" },
+              { "name": "scale_fill_manual", "on": true, "note": "Okabe–Ito 色板" },
+              { "name": "labs", "on": true, "note": "轴标签含单位" },
+              { "name": "theme", "on": true, "note": "统一字号与网格" }
+            ], "preview": "可直接投稿的探索图：颜色色盲安全，坐标轴有单位。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. 为什么不是柱状图：分布藏在均值后面</h2>
+      <p>柱状图 + 误差线只给你两个数：均值和误差。分布的形状、离群值、每组 n——全被藏起来。先算出每组的五个数字，再决定该用什么图。</p>
+
+      <article class="example-card" id="ch08-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：五数概括暴露柱状图的问题</h3>
+          <div class="ex-meta"><span class="tag">为什么要箱线图</span><span class="tag orange">图形判断</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch08-ex-02"><code class="r">library(readr); library(dplyr)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+pika |&gt;
+  group_by(altitude_group) |&gt;
+  summarise(
+    n = n(),
+    mean = round(mean(body_mass_g), 1),
+    median = round(median(body_mass_g), 1),
+    min = round(min(body_mass_g), 1),
+    max = round(max(body_mass_g), 1),
+    .groups = "drop"
+  )</code></pre>
+        <div class="ex-output" data-output-for="ch08-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 3 × 6
+  altitude_group     n  mean median   min   max
+  &lt;chr&gt;          &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1 high              20  168.   171.  118   194.
+2 low               20  180.   182.  151   215.
+3 mid               20  179.   177.  147.  232 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>输出</b>：三组每组 n = 20，但均值与中位数不一致（high：168 vs 171；mid：179 vs 177）——分布不对称。</li>
+            <li><b>范围</b>：三组的最小值 118–151、最大值 194–232 都跨得很开——高海拔组有一个 118 g 的个体，柱状图完全看不见它。</li>
+            <li><b>推论</b>：柱状图只能画均值；均值被极端值拉动，分布的重叠也被抹掉。箱线图 + 散点同时给出中位数、IQR、范围与每个个体。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>「均值柱 + 误差线」配小 n：读者会以为分布是正态的、没有离群值、n 都一样。n = 20/组 时正确做法是箱线 + 散点，图注写 n。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "grouped ×3" }, "out": "# A tibble: 3 × 6", "note": "五数概括：均值≠中位数，范围很宽", "dataframe": {
+            "columns": [ { "name": "altitude_group", "type": "chr" }, { "name": "n", "type": "int" }, { "name": "mean", "type": "dbl" }, { "name": "median", "type": "dbl" }, { "name": "min", "type": "dbl" }, { "name": "max", "type": "dbl" } ],
+            "rows": [ ["high", "20", "168.", "171.", "118", "194."], ["low", "20", "180.", "182.", "151", "215."], ["mid", "20", "179.", "177.", "147", "232"] ], "highlight": [0], "note": "high 组均值 < 中位数 + 最小 118 g：偏态与离群值" } }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch08-mass-by-altitude">
+        <div class="plot-stage-head">
+          <span>图 8.2 · 体重 × 海拔（箱线 + 个体点）</span>
+          <a href="../assets/figures/chapters/ch08-mass-by-altitude.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch08-mass-by-altitude.svg"
+               alt="箱线图显示高海拔组体重中位数低于低海拔组，低海拔组最高；三组均叠加个体点，组间分布重叠明显，差异幅度有限。"
+               width="712" height="440">
+        </div>
+        <figcaption>图 8.2 · 不同海拔的体重分布；n = 20/20/20；箱体为 IQR，须线为 1.5×IQR；箱内横线为中位数。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch08_mass.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>3. 映射与设定：colour = sex 不是 colour = "red"</h2>
+      <p><b>映射</b>（mapping）把一列数据接到视觉通道上：<code>aes(colour = sex)</code> 生成图例、按性别配色。<b>设定</b>（setting）给一个固定值：<code>colour = "red"</code>。两者写错位置，图的语义就错了。</p>
+
+      <article class="example-card" id="ch08-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：血红蛋白 × 海拔，按性别映射颜色与形状</h3>
+          <div class="ex-meta"><span class="tag">mapping vs setting</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch08-ex-03"><code class="r">library(readr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+p &lt;- ggplot(pika[!is.na(pika$hemoglobin_g_l), ],
+            aes(altitude_m, hemoglobin_g_l, colour = sex, shape = sex)) +
+  geom_point(size = 1.4, alpha = .8)
+length(unique(p$data$altitude_m))
+nrow(p$data)
+class(p$layers[[1]]$geom)</code></pre>
+        <div class="ex-output" data-output-for="ch08-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 3
+[1] 58
+[1] "GeomPoint" "Geom"      "ggproto"   "gg"       </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 3–5 行</b>：先剔除 2 个溶血 NA（否则 ggplot 每次都会警告「removed 2 rows」）；x 用<b>连续</b>海拔、颜色与形状都映射到性别。</li>
+            <li><b>第 6 行</b>：海拔只有 3 个取值（3200/4100/5000）——点会排成三条竖线，所以配合轻微抖动或分面更易读。</li>
+            <li><b>第 7 行</b>：58 个点 = 60 − 2。</li>
+            <li><b>第 8 行</b>：图层类型是 <code>GeomPoint</code>——每个 <code>+</code> 后面就是这样一个图层对象。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把连续变量（如体重）映射到 <code>colour</code> 却配了离散色板 → 「Continuous value supplied to discrete scale」。连续变量用 viridis；离散才用 Okabe–Ito。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "p": "ggplot" }, "out": "", "note": "连续性 x + 性别映射到颜色/形状", "dataframe": null },
+          { "line": 6, "vars": { "p": "ggplot" }, "out": "[1] 3", "note": "海拔只有 3 个采样点", "dataframe": null },
+          { "line": 7, "vars": { "p": "ggplot" }, "out": "[1] 58", "note": "58 个有效观测（剔除 2 个 NA）", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch08-hb-altitude">
+        <div class="plot-stage-head">
+          <span>图 8.3 · 血红蛋白 × 海拔（按性别）</span>
+          <a href="../assets/figures/chapters/ch08-hb-altitude.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch08-hb-altitude.svg"
+               alt="散点图显示血红蛋白随海拔升高而上升：低海拔约 149 g/L，高海拔约 178 g/L；雌雄两组分别用圆点与三角并各自拟合直线，两条线斜率接近。"
+               width="712" height="440">
+        </div>
+        <figcaption>图 8.3 · 血红蛋白与采样海拔的关系；n = 58（2 个溶血 NA 剔除），按性别分色并区分形状（色盲安全）；直线为线性拟合，不带置信带；海拔为三个采样点，直线仅作趋势示意。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch08_hb_altitude.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>4. 分面：性别是否改变模式</h2>
+      <p>「性别是否改变海拔与体重的关系」不需要新的 geom——把同一张图按性别拆成两个面板（<code>facet_wrap(~sex)</code>），模式是否一致一眼就能比。</p>
+
+      <article class="example-card" id="ch08-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：facet_wrap 按性别分面</h3>
+          <div class="ex-meta"><span class="tag">facet_wrap</span><span class="tag blue">比较模式</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch08-ex-04"><code class="r">library(readr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+p &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  facet_wrap(~sex, nrow = 1)
+length(unique(p$data$sex))
+class(p$facet)</code></pre>
+        <div class="ex-output" data-output-for="ch08-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 2
+[1] "FacetWrap" "Facet"     "ggproto"   "gg"       </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6 行</b>：<code>facet_wrap(~sex, nrow = 1)</code> 按性别切两个面板，一行排列；每组的 n 不变（10/组）。</li>
+            <li><b>第 7–8 行</b>：确认 2 个水平、分面对象是 <code>FacetWrap</code>。</li>
+            <li><b>解读</b>：雌性组间差异更明显，雄性三组更接近——「性别可能修饰海拔效应」，这是第 11 章交互项假设的来源。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>分面时每个面板用独立的 y 轴范围（<code>scales = "free_y"</code>）——面板间差异被抹平。比较模式时坚持共享标度（默认）。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "p": "ggplot" }, "out": "", "note": "箱线图 + 按性别分面", "dataframe": null },
+          { "line": 7, "vars": { "p": "ggplot" }, "out": "[1] 2", "note": "两个性别水平", "dataframe": null },
+          { "line": 8, "vars": { "p": "ggplot" }, "out": "FacetWrap …", "note": "分面对象：两个并排面板", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <figure class="plot-stage" data-figure="ch08-mass-sex-facet">
+        <div class="plot-stage-head">
+          <span>图 8.4 · 体重 × 海拔，按性别分面</span>
+          <a href="../assets/figures/chapters/ch08-mass-sex-facet.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch08-mass-sex-facet.svg"
+               alt="两个并排面板（雌性、雄性）的箱线图：雌性组间中位数差异明显，雄性三组更接近；点表示个体，箱体为 IQR，每组 n 写在图注。"
+               width="712" height="520">
+        </div>
+        <figcaption>图 8.4 · 体重按海拔组分面（左 F、右 M）；n = 10/组；箱体为 IQR、须线为 1.5×IQR；叠加个体点以显示分布。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch08_mass_sex_facet.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <h2>5. 导出三张探索图</h2>
+      <p>探索图也要有尺寸与主题：<code>ggsave(width, height, units = "mm")</code> 按期刊单栏宽（89 mm）导出。三张图对应三个问题，文件名带语义——这本身就是「图先于检验」的交付证据。</p>
+
+      <article class="example-card" id="ch08-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：三张交付图按 89 mm 导出</h3>
+          <div class="ex-meta"><span class="tag">ggsave</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch08-ex-05"><code class="r">library(readr); library(ggplot2)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+dir.create(here::here("figures"), showWarnings = FALSE)
+p_mass &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  geom_jitter(width = .12, alpha = .45, size = .7) +
+  scale_fill_manual(values = c(low = "#56B4E9", mid = "#E69F00",
+                               high = "#0072B2"), guide = "none") +
+  labs(x = "Altitude group", y = "Body mass (g)") +
+  theme_classic(base_size = 9)
+p_hb &lt;- ggplot(pika[!is.na(pika$hemoglobin_g_l), ],
+               aes(altitude_m, hemoglobin_g_l, colour = sex)) +
+  geom_point(size = 1.4, alpha = .8) +
+  labs(x = "Altitude (m)", y = "Haemoglobin (g/L)") +
+  theme_classic(base_size = 9)
+p_sex &lt;- ggplot(pika, aes(altitude_group, body_mass_g, fill = altitude_group)) +
+  geom_boxplot(width = .55, outlier.shape = NA) +
+  facet_wrap(~sex, nrow = 1) +
+  scale_fill_manual(values = c(low = "#56B4E9", mid = "#E69F00",
+                               high = "#0072B2"), guide = "none") +
+  labs(x = NULL, y = "Body mass (g)") +
+  theme_classic(base_size = 9)
+ggsave(here::here("figures/fig_explore_mass.svg"), p_mass,
+       width = 89, height = 55, units = "mm")
+ggsave(here::here("figures/fig_explore_hb.svg"), p_hb,
+       width = 89, height = 55, units = "mm")
+ggsave(here::here("figures/fig_explore_sex.svg"), p_sex,
+       width = 89, height = 65, units = "mm")
+file.exists(here::here(c("figures/fig_explore_mass.svg",
+                         "figures/fig_explore_hb.svg",
+                         "figures/fig_explore_sex.svg")))</code></pre>
+        <div class="ex-output" data-output-for="ch08-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] TRUE TRUE TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6–21 行</b>：三张图的完整说明书——数据、映射、geom、色板、标签、主题。</li>
+            <li><b>第 22–27 行</b>：<code>ggsave</code> 按 mm 导出：单栏 89 mm 宽，高度按图的内容选 55/65 mm。</li>
+            <li><b>第 28–30 行</b>：三个 <code>TRUE</code> = 三份交付物落盘。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只在 RStudio 窗口里截图。投稿要的是矢量文件 + 固定物理尺寸；<code>ggsave</code> 缺 <code>units = "mm"</code> 时默认英寸，89 会变成 2260 mm 的巨图。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 6, "vars": { "p_mass": "ggplot" }, "out": "", "note": "三张图的说明书", "dataframe": null },
+          { "line": 22, "vars": { "p_mass": "ggplot" }, "out": "", "note": "按 89 × 55 mm 导出 SVG", "dataframe": null },
+          { "line": 30, "vars": { "p_mass": "ggplot" }, "out": "TRUE TRUE TRUE", "note": "三份交付物落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：三张探索图</h2>
+        <p>把本章操作串成 <code>R/08_explore.R</code>，产出三张交付图。</p>
+        <ol class="task-steps">
+          <li><b>分布</b>：体重 × 海拔，箱线 + 散点；图注写 n = 20/组。</li>
+          <li><b>关系</b>：血红蛋白 × 海拔，按性别分色 + 分形状；剔除 2 个 NA 并说明。</li>
+          <li><b>模式</b>：体重 × 海拔按性别分面，共享 y 轴。</li>
+          <li><b>导出</b>：三张 SVG 按 89 mm 单栏宽；<code>file.exists()</code> 全部 TRUE。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>每张图都能回答「为什么用这个 geom」——写进图注。</li>
+            <li>三张图共用同一套配色与字号。</li>
+            <li>图注含 n、单位与统计说明（误差带/拟合方法）。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: `mapping` must be created by `aes()`. ℹ Did you use `aes()`?</p>
+        <p><b>病因</b>：把映射直接写成了 <code>x = body_mass_g</code>，没包 <code>aes()</code>。</p>
+        <p><b>修复</b>：<code>ggplot(pika, aes(x = ..., y = ...))</code>。</p>
+        <p><b>预防</b>：只有常量设定才写在 <code>aes()</code> 外。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in `geom_boxplot()`: ! stat_boxplot requires the following missing aesthetics: y.</p>
+        <p><b>病因</b>：映射里缺 y（或 y 的列名拼错），geom 不知道该画什么。</p>
+        <p><b>修复</b>：补 <code>y = body_mass_g</code>；核对列名 <code>names(pika)</code>。</p>
+        <p><b>预防</b>：报错会明确列出缺失的 aesthetic——按名字补。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Aesthetics must be either length 1 or the same as the data (60): colour.</p>
+        <p><b>病因</b>：在 <code>aes()</code> 里传了一个长度不为 1 的外部向量（比如 <code>colour = c("red","blue")</code>）。</p>
+        <p><b>修复</b>：颜色作为设定写在外面，或用列映射 <code>colour = sex</code>。</p>
+        <p><b>预防</b>：aes() 里只放列名或长度为 1 的常量。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>图先于检验。</b>先看图判断方向、重叠与离群值，再选检验（第 11 章）。图必须显示分布与 n，而不是只显示均值——「均值柱 + 误差线」在小 n 时是一种视觉误导。</p>
+      </div>
+      <div class="repro">
+        <p>三张图的代码与 <code>ggsave</code> 尺寸都在 <code>08_explore.R</code> 里；重跑脚本应得到同样尺寸、同样配色、同样文件的图。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Exploratory figures were produced with ggplot2: body mass by altitude group is shown as box plots (IQR, 1.5×IQR whiskers) overlaid with individual points; haemoglobin is plotted against sampling altitude with sex encoded by both colour and shape; the mass–altitude pattern is additionally faceted by sex. All panels share a common scale and report n in the captions.</p>
+        <p class="small muted">中文：探索图由 ggplot2 绘制：体重按海拔组用箱线图（IQR、1.5×IQR 须线）并叠加个体点；血红蛋白对采样海拔作图，性别同时用颜色与形状编码；体重–海拔模式再按性别分面。所有面板共享标度，图注报告 n。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>ggplot 是七层语法：data / aes / geom / stat / scale / facet / theme，每层一个决定。映射进 aes()，设定在外面；箱线 + 散点显示分布与 n；分面比较模式；ggsave 按 mm 导出矢量图。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch08">
+        <li><label><input type="checkbox"><span>我能说出图形语法七个部件的作用</span></label></li>
+        <li><label><input type="checkbox"><span>我能解释为什么小 n 组间比较不用柱状图 + 误差线</span></label></li>
+        <li><label><input type="checkbox"><span>我能分清映射与设定，并各举一例</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 facet_wrap 比较两组模式且共享标度</span></label></li>
+        <li><label><input type="checkbox"><span>我能按 89 mm 单栏宽导出 SVG 并核对文件存在</span></label></li>
+        <li><label><input type="checkbox"><span>我的图注都写了 n、单位与拟合/误差说明</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch08">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：ggplot2 语法",
+          "questions": [
+            { "type": "mcq", "q": "aes() 的作用是？",
+              "options": ["设定固定颜色", "把数据列映射到视觉通道", "选择主题", "导出图片"], "answer": 1,
+              "explain": "aes 是 mapping：列 → x/y/colour/shape 等通道，并生成图例。固定样式写在 aes() 外。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "小 n（20/组）比较组间体重，最合适的图是？",
+              "options": ["均值柱 + 误差线", "箱线图 + 个体散点", "饼图", "双 Y 轴折线"], "answer": 1,
+              "explain": "箱线 + 散点同时显示中位数、IQR、范围与每个个体，避免均值柱掩盖分布。", "skill": "stats", "difficulty": 1 },
+            { "type": "tf", "q": "fill = \"steelblue\" 写在 aes() 里会得到固定蓝色填充。",
+              "answer": false,
+              "explain": "aes() 里写常量会被当成映射：R 创建一个常量列并生成离散标度，结果常常是意外颜色 + 多余图例。", "skill": "syntax", "difficulty": 2 },
+            { "type": "fill", "q": "按性别把同一张图拆成两个面板：facet_wrap(~____)。",
+              "answer": ["sex"], "explain": "facet_wrap(~sex) 按 sex 的水平切面板；nrow 控制排列。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "ggsave(width = 89, height = 55) 不带 units 时，尺寸单位是？",
+              "options": ["毫米", "英寸", "像素", "厘米"], "answer": 1,
+              "explain": "默认英寸：89 英寸是巨图。期刊尺寸用 units = \"mm\"。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "连续变量映射到 colour 却配离散色板，会得到？",
+              "options": ["正常渐变", "Continuous value supplied to discrete scale", "报错 missing aesthetics", "自动用 viridis"], "answer": 1,
+              "explain": "连续值不能进离散标度。连续变量用 scale_colour_viridis_c() 一类连续标度。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：箱线图 + 个体点两层。",
+              "code": "ggplot(pika, aes(altitude_group, body_mass_g)) +\n  geom_boxplot() +\n  ____(width = .12, alpha = .45)",
+              "blanks": [ { "answer": ["geom_jitter"] } ],
+              "explain": "geom_jitter 在点位置加轻微抖动，避免同一值的点完全重叠（overplotting）。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "分面比较模式时应让每个面板自由缩放 y 轴（scales = \"free_y\"）。",
+              "answer": false,
+              "explain": "自由标度会抹平面板间差异；比较模式要用共享标度（默认）。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 figures/；三张图对应三个探索问题。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>fig_explore_mass.svg</code></td><td>体重 × 海拔（箱线 + 点）</td><td>ch09 主题与拼图</td></tr>
+            <tr><td><code>fig_explore_hb.svg</code></td><td>血红蛋白 × 海拔（按性别）</td><td>ch09 配色与图注</td></tr>
+            <tr><td><code>fig_explore_sex.svg</code></td><td>体重分面（F/M）</td><td>ch11 交互假设</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：探索图能看，但还不能投——第 9 章处理配色、排版、拼图、图注与导出规格。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#ggplot2-grammar">速查：ggplot2 语法</a>
+          <a class="btn" href="../cheatsheets.html#geom-choice">速查：geom 选择</a>
+          <a class="btn" href="../datasets.html#pika-physiology">数据集：pika_physiology</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

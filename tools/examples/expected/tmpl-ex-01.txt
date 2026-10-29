@@ -1,0 +1,16 @@
+# A tibble: 60 × 11
+   id    altitude_m altitude_group sex   body_mass_g body_length_mm
+   <chr>      <dbl> <chr>          <chr>       <dbl>          <dbl>
+ 1 P001        3200 low            F            165.           184.
+ 2 P002        3200 low            F            158.           187.
+ 3 P003        3200 low            F            156.           181.
+ 4 P004        3200 low            F            190.           212.
+ 5 P005        3200 low            F            186.           204.
+ 6 P006        3200 low            F            162.           190.
+ 7 P007        3200 low            F            194.           193.
+ 8 P008        3200 low            F            171.           193.
+ 9 P009        3200 low            F            173.           204.
+10 P010        3200 low            F            182.           193.
+# ℹ 50 more rows
+# ℹ 5 more variables: hemoglobin_g_l <dbl>, hematocrit_pct <dbl>,
+#   glucose_mmol_l <dbl>, batch <chr>, measured_on <date>

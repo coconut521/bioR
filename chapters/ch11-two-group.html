@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 11 章 两组比较：t 检验与 Wilcoxon | bioR</title>
+<meta name="description" content="按设计选择 Welch t 或配对检验，报告均值差、95% CI、Cohen's d 与 p；用 pika_physiology 与 pika_repeated 完成两组比较，产出 stats_two_group.csv 与 methods_two_group.md。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch11" data-part="III">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 11 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 11 · TWO-GROUP TESTS</span><span>STAGE III · INFER</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">11</div>
+          <div class="cover-copy">
+            <h1>两组比较：t 检验与 Wilcoxon</h1>
+            <p class="cover-lede">p = 0.048 不是「显著优于」——它只是「在 α = 0.05 的规则下勉强过线」。效应量和 CI 才告诉你差异有多大。</p>
+            <p class="cover-question"><b>本章科研问题：</b>低氧/性别等两组之间，差异有多大？能否排除「没有差异」？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch10</span><span>数据 pika_physiology · pika_repeated</span><span>交付 stats_two_group.csv · methods_two_group.md</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>先写设计（独立/配对、双侧、α）再选检验。</li>
+          <li>用 Welch t 检验比较两组，并知道为什么默认不用 Student。</li>
+          <li>用 <code>broom::tidy()</code> 取均值差与 95% CI，用 <code>effectsize</code> 取 Cohen's d。</li>
+          <li>用配对 t 检验处理同一批个体的前后比较。</li>
+          <li>说出「不显著 ≠ 无差异」与「p 值小 ≠ 效应大」。</li>
+          <li>产出含 CI 与效应量的 <code>stats_two_group.csv</code> 与方法文段。</li>
+        </ul>
+        <p class="small muted">前置：第 10 章；数据：<code>pika_physiology.csv</code>、<code>pika_repeated.csv</code>；交付：<code>stats_two_group.csv</code>、<code>methods_two_group.md</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>两组比较是科研里出现频率最高的统计动作：处理 vs 对照、雌 vs 雄、前 vs 后。问题不在「会不会跑 t.test」，而在<b>三件先于代码的事</b>：设计是独立还是配对？方差不齐怎么办？要看的是差异大小还是一张 p 值？这一章把这三个决定写进脚本，然后让数据说话。</p>
+      </div>
+
+      <h2>1. 独立两组：Welch t 检验</h2>
+      <p>独立两组（不同个体）的比较默认用 <b>Welch t 检验</b>（<code>var.equal = FALSE</code>）：它不假设两组方差相等，代价只是自由度略小。R 的 <code>t.test()</code> 默认就是 Welch——你不需要「升级」，只需要知道自己在用哪个。</p>
+
+      <article class="example-card" id="ch11-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：雌雄体重的 Welch 比较</h3>
+          <div class="ex-meta"><span class="tag">t.test · tidy</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch11-ex-01"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+res &lt;- t.test(body_mass_g ~ sex, data = pika)
+tidy(res) |&gt; select(estimate1, estimate2, estimate, conf.low, conf.high, p.value)</code></pre>
+        <div class="ex-output" data-output-for="ch11-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 1 × 6
+  estimate1 estimate2 estimate conf.low conf.high p.value
+      &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+1      171.      180.    -8.64    -17.2   -0.0824  0.0479</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：公式接口 <code>y ~ group</code>；默认 Welch（不等方差）。</li>
+            <li><b>第 5 行</b>：<code>tidy()</code> 把 htest 压成一行：两组均值 171.0 / 179.7、均值差 −8.6 g、95% CI [−17.2, −0.08]、p = 0.048。</li>
+            <li><b>解读</b>：CI 几乎贴着 0（下界 −0.08），p 擦线。差异「可能很小、也可能不小」——这正是必须报 CI 的原因。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 p = 0.048 写成「显著优于」并下生物结论。p 只说明「在 α = 0.05 规则下可以拒绝零假设」；差异多大由 CI 与效应量说话。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "pika": "60 × 11" }, "out": "", "note": "Welch t（默认）", "dataframe": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "# A tibble: 1 × 6", "note": "均值差 −8.6、CI −17.2..−0.08、p=0.048", "dataframe": {
+            "columns": [ { "name": "estimate1", "type": "dbl" }, { "name": "estimate2", "type": "dbl" }, { "name": "estimate", "type": "dbl" }, { "name": "conf.low", "type": "dbl" }, { "name": "conf.high", "type": "dbl" }, { "name": "p.value", "type": "dbl" } ],
+            "rows": [ ["171.", "180.", "-8.64", "-17.2", "-0.0824", "0.0479"] ], "highlight": [0], "note": "CI 几乎擦着 0：差异大小不确定" } }
+        ] }</script>
+      </article>
+
+      <h2>2. 假设检查：方差齐性与正态性</h2>
+      <p>Welch 不需要方差齐性，但检查它有两个用处：<b>决定用哪个 t</b>（方差差得远就别用 Student）、以及<b>在方法里说明</b>。正态性检查（ch10）同理——辅助判断，不是机械开关。</p>
+
+      <article class="example-card" id="ch11-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：方差比 3.2，Student 与 Welch 的 p 差多少</h3>
+          <div class="ex-meta"><span class="tag">var.test</span><span class="tag orange">前提判断</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch11-ex-02"><code class="r">library(readr); library(dplyr); library(broom)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+suppressMessages(tidy(var.test(body_mass_g ~ sex, data = pika))) |&gt;
+  select(estimate, p.value)
+c(student = round(tidy(t.test(body_mass_g ~ sex, data = pika,
+                              var.equal = TRUE))$p.value, 4),
+  welch = round(tidy(t.test(body_mass_g ~ sex, data = pika,
+                            var.equal = FALSE))$p.value, 4))</code></pre>
+        <div class="ex-output" data-output-for="ch11-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 1 × 2
+  estimate p.value
+     &lt;dbl&gt;   &lt;dbl&gt;
+1     3.20 0.00246
+student   welch 
+ 0.0467  0.0479 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4–5 行</b>：方差比 3.20（雌性 SD 20.3 vs 雄性 11.3），p = 0.0025——方差不齐的证据很强。</li>
+            <li><b>第 6–9 行</b>：具名向量并列 Student（0.0467）与 Welch（0.0479）的 p。本例两者接近（n 相等时差别小），但方差严重不齐 + n 不等时 Student 会给出错误的小 p。</li>
+            <li><b>决定</b>：方法里写「Welch t-test（不等方差）」——这是默认且稳健的选择。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>看正态性检验决定 t 还是 Wilcoxon、看方差检验决定 Student 还是 Welch——把两个检验当「开关」是机械决策。前提检查的产出是<b>一句方法学说明 + 一个稳健选择</b>，不是自动流程。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 5, "vars": { "pika": "60 × 11" }, "out": "3.20 / 0.00246", "note": "方差比 3.2，方差不齐", "dataframe": null },
+          { "line": 6, "vars": { "pika": "60 × 11" }, "out": "0.0467", "note": "Student p", "dataframe": null },
+          { "line": 7, "vars": { "pika": "60 × 11" }, "out": "0.0479", "note": "Welch p（默认采用）", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 效应量与 CI：差异到底多大</h2>
+      <p>p 值回答「能不能排除零」，<b>效应量</b>回答「差多少」。Cohen's d 把均值差标准化（除以合并 SD），并给出 95% CI——这是能进论文摘要的数字。</p>
+
+      <article class="example-card" id="ch11-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：Cohen's d = −0.52（95% CI −1.04 至 −0.01）</h3>
+          <div class="ex-meta"><span class="tag">effectsize</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch11-ex-03"><code class="r">library(readr); library(effectsize)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+d &lt;- cohens_d(body_mass_g ~ sex, data = pika)
+round(d$Cohens_d, 2)
+round(d$CI_low, 2)
+round(d$CI_high, 2)</code></pre>
+        <div class="ex-output" data-output-for="ch11-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] -0.52
+[1] -1.04
+[1] -0.01</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 4 行</b>：<code>cohens_d()</code> 计算标准化均值差（公式接口，与 t.test 一致）。</li>
+            <li><b>第 5–7 行</b>：d = −0.52（中等效应）；CI [−1.04, −0.01]——下界跨过 −1（大效应），上界几乎为 0。</li>
+            <li><b>解读</b>：效应「中等」但不确定；这个 CI 宽度主要来自雌性组的大 SD（20.3）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只报 p 不报效应量。审稿人会问「差异有生物意义吗」——d = 0.52 与 d = 0.05 可以有同样的 p（只要 n 够大）。<b>p 与效应量必须成对报告。</b></p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11" }, "out": "", "note": "读入", "dataframe": null },
+          { "line": 4, "vars": { "d": "effectsize" }, "out": "", "note": "Cohen's d", "dataframe": null },
+          { "line": 7, "vars": { "d": "effectsize" }, "out": "-0.52 / -1.04 / -0.01", "note": "中等效应，CI 跨近 0", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="stats">
+        <script type="application/json" class="explainer-data">{
+          "question": "p 值、效应量与 n：谁在说话？",
+          "frames": [
+            { "groups": [
+              { "label": "F", "mean": 171.0, "sd": 20.3, "n": 30 },
+              { "label": "M", "mean": 179.7, "sd": 11.3, "n": 30 }
+            ], "effect": "均值差 −8.6 g（95% CI −17.2 至 −0.08），d = −0.52，p = 0.048：差异可能是中等，也可能很小。",
+              "note": "两组分布：雌性组的 SD 几乎是雄性组的两倍——方差差 3.2 倍。" },
+            { "groups": [
+              { "label": "n=30/组", "mean": 175.4, "sd": 16.9, "n": 60 },
+              { "label": "n=120/组", "mean": 175.4, "sd": 16.9, "n": 240 }
+            ], "effect": "同样的 d = 0.52：n 翻 4 倍，CI 收窄一半，p 会明显变小——但效应仍然是 0.52。p 依赖 n，效应量不依赖。",
+              "note": "效应量与样本量：p 值随 n 变，d 不变；别用 p 的大小判断差异的大小。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>4. 配对设计：同一批个体的前后比较</h2>
+      <p>配对设计（同一批个体测两次）必须用<b>配对检验</b>：先算每个个体的差值，再对差值做单样本检验。把配对数据当独立两组，会低估方差、做小 p——这是伪重复的近亲。</p>
+
+      <article class="example-card" id="ch11-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：对照组的 T0 vs T28（配对）</h3>
+          <div class="ex-meta"><span class="tag">paired t · Wilcoxon</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch11-ex-04"><code class="r">library(readr); library(dplyr); library(tidyr); library(broom)
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"),
+                show_col_types = FALSE)
+wide &lt;- rep |&gt;
+  filter(treatment == "control") |&gt;
+  select(id, timepoint, body_mass_g) |&gt;
+  pivot_wider(names_from = timepoint, values_from = body_mass_g)
+paired_t &lt;- t.test(wide$T28, wide$T0, paired = TRUE)
+tidy(paired_t) |&gt; select(estimate, conf.low, conf.high, p.value)
+wilcox.test(wide$T28, wide$T0, paired = TRUE)$p.value</code></pre>
+        <div class="ex-output" data-output-for="ch11-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text"># A tibble: 1 × 4
+  estimate conf.low conf.high p.value
+     &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+1     2.53    -5.35      10.4   0.446
+[1] 0.4375</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 6–9 行</b>：宽表化后每个 id 一行（T0、T14、T28 各一列）——配对检验的标准形状。</li>
+            <li><b>第 10–11 行</b>：配对 t：差值均值 +2.53 g，CI [−5.35, 10.4]，p = 0.446——没有证据表明对照组 28 天内体重变化。</li>
+            <li><b>第 12 行</b>：Wilcoxon 符号秩 p = 0.4375——与 t 结论一致（差值近似对称时两者接近）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 36 行（12 id × 3 时间点）当 36 个独立个体做两组 t 检验——n 虚增 3 倍。<b>先看设计（配对？重复？）再选检验。</b></p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "rep": "36 × 6" }, "out": "", "note": "读入重复测量表", "dataframe": null },
+          { "line": 9, "vars": { "wide": "12 × 5" }, "out": "", "note": "宽表：每个 id 一行", "dataframe": null },
+          { "line": 11, "vars": { "wide": "12 × 5" }, "out": "2.53 / -5.35 / 10.4 / 0.446", "note": "配对 t：无证据", "dataframe": null },
+          { "line": 12, "vars": { "wide": "12 × 5" }, "out": "0.4375", "note": "Wilcoxon 一致", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>5. 端到端：stats_two_group.csv 与方法文段</h2>
+      <p>把前面三个比较整理成一张机器可读的结果表 + 一段方法学文字。结果表的三列固定：<b>比较、estimate、95% CI、p</b>；效应量单独一行。</p>
+
+      <article class="example-card" id="ch11-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：结果表与方法文段落盘</h3>
+          <div class="ex-meta"><span class="tag">端到端</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch11-ex-05"><code class="r">library(readr); library(dplyr); library(tidyr); library(broom); library(effectsize)
+pika &lt;- read_csv(here::here("assets/data/pika_physiology.csv"),
+                 show_col_types = FALSE)
+rep &lt;- read_csv(here::here("assets/data/pika_repeated.csv"),
+                show_col_types = FALSE)
+dir.create(here::here("data"), showWarnings = FALSE)
+ind &lt;- tidy(t.test(body_mass_g ~ sex, data = pika, var.equal = FALSE))
+d &lt;- cohens_d(body_mass_g ~ sex, data = pika)
+wide &lt;- rep |&gt;
+  filter(treatment == "control") |&gt;
+  select(id, timepoint, body_mass_g) |&gt;
+  pivot_wider(names_from = timepoint, values_from = body_mass_g)
+pt &lt;- tidy(t.test(wide$T28, wide$T0, paired = TRUE))
+res &lt;- tibble(
+  comparison = c("mass ~ sex (Welch)", "mass ~ sex (Cohen's d)",
+                 "control T0 vs T28 (paired)"),
+  estimate = c(round(ind$estimate, 1), round(d$Cohens_d, 2), round(pt$estimate, 1)),
+  conf_low = c(round(ind$conf.low, 1), round(d$CI_low, 2), round(pt$conf.low, 1)),
+  conf_high = c(round(ind$conf.high, 1), round(d$CI_high, 2), round(pt$conf.high, 1)),
+  p_value = c(signif(ind$p.value, 3), NA, signif(pt$p.value, 3)))
+write_csv(res, here::here("data/stats_two_group.csv"))
+methods &lt;- c(
+  "# Two-group comparisons",
+  "",
+  "- Design: independent groups (sex) and paired visits (control T0 vs T28); two-sided tests, alpha = 0.05.",
+  "- Independent comparison: Welch t-test (unequal variances not assumed).",
+  "- Effect size: Cohen's d with 95% CI.",
+  "- Paired comparison: paired t-test; Wilcoxon signed-rank as sensitivity analysis.",
+  "- Software: R 4.5.2; broom/effectsize for tidying."
+)
+writeLines(methods, here::here("data/methods_two_group.md"))
+file.exists(here::here(c("data/stats_two_group.csv",
+                         "data/methods_two_group.md")))</code></pre>
+        <div class="ex-output" data-output-for="ch11-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] TRUE TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 7–11 行</b>：三个比较的原始结果（Welch t、Cohen's d、配对 t）。</li>
+            <li><b>第 12–17 行</b>：拼成统一结果表：比较名、estimate、CI 两列、p 值（d 行的 p 留 NA——效应量本身不产生 p）。</li>
+            <li><b>第 18–24 行</b>：方法文段——设计、检验、效应量、敏感性分析、软件版本。</li>
+            <li><b>第 25 行</b>：两份交付物 TRUE TRUE。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>结果表只有 p 值一列。审稿人要的是「差异 + 不确定性」：estimate 与 95% CI 必须在表里。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "pika": "60 × 11", "rep": "36 × 6" }, "out": "", "note": "读入两张表", "dataframe": null },
+          { "line": 17, "vars": { "res": "3 × 5" }, "out": "", "note": "结果表：3 行 × 5 列", "dataframe": {
+            "columns": [ { "name": "comparison", "type": "chr" }, { "name": "estimate", "type": "dbl" }, { "name": "conf_low", "type": "dbl" }, { "name": "conf_high", "type": "dbl" }, { "name": "p_value", "type": "dbl" } ],
+            "rows": [ ["mass ~ sex (Welch)", "-8.6", "-17.2", "-0.1", "0.0479"], ["mass ~ sex (Cohen's d)", "-0.52", "-1.04", "-0.01", "NA"], ["control T0 vs T28 (paired)", "2.5", "-5.4", "10.4", "0.446"] ], "highlight": [0], "note": "每行都有 estimate + CI" } },
+          { "line": 24, "vars": { "methods": "chr[7]" }, "out": "", "note": "方法文段写入 md", "dataframe": null },
+          { "line": 26, "vars": { "res": "3 × 5" }, "out": "TRUE TRUE", "note": "两份交付物落盘", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：两张结果表</h2>
+        <p>把本章操作串成 <code>R/11_two_group.R</code>，产出两份交付物。</p>
+        <ol class="task-steps">
+          <li><b>设计</b>：脚本头部写清独立/配对、双侧、α = 0.05、Welch。</li>
+          <li><b>比较</b>：雌雄体重（Welch + d + CI）；对照组 T0 vs T28（配对 t + Wilcoxon）。</li>
+          <li><b>结果表</b>：compare / estimate / CI 两列 / p；导出 <code>stats_two_group.csv</code>。</li>
+          <li><b>方法</b>：一段英文 methods，导出 <code>methods_two_group.md</code>。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>每个比较都同时有 estimate 与 95% CI。</li>
+            <li>方法文段提到 Welch 与双侧检验。</li>
+            <li>配对比较只用了 12 个个体（不是 36 行）。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error in t.test.formula(body_mass_g ~ sex, data = pika) : grouping factor must have exactly 2 levels</p>
+        <p><b>病因</b>：公式接口的分组列有 3 个及以上水平（比如把 altitude_group 当分组）。</p>
+        <p><b>修复</b>：两组比较先 filter 到两个水平；多组用 ANOVA（第 12 章）。</p>
+        <p><b>预防</b>：公式接口只服务两组；多组问题在 ch12 解决。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in t.test.default(x = wide$T28, y = wide$T0) : not enough 'y' observations</p>
+        <p><b>病因</b>：某一组观测不足 2 个（filter 条件写错、或 id 匹配失败导致空组）。</p>
+        <p><b>修复</b>：检查 n；配对比较确认每个 id 两个时间点都有值。</p>
+        <p><b>预防</b>：检验前先 <code>count()</code> 两组样本量。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in wilcox.test.default(x, y) : 'x' must be numeric</p>
+        <p><b>病因</b>：传入了字符列（如带单位的 "155 g/L"）或因读取错位变成 chr。</p>
+        <p><b>修复</b>：<code>parse_number()</code> 清洗；<code>glimpse()</code> 核对类型。</p>
+        <p><b>预防</b>：导入后立即检查类型（第 3 章的规矩）。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>先设计后检验；效应量 + CI 比 p 值更重要；不显著 ≠ 无差异。</b>本例配对比较 p = 0.446，CI [−5.4, 10.4] g——「没有证据表明变化」不等于「证明没有变化」。报告要写「no evidence of a difference」，而不是「no difference」。</p>
+      </div>
+      <div class="repro">
+        <p>设计、检验选择、效应量与结果表全在 <code>11_two_group.R</code>；换数据只需重跑，方法文段随代码更新。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Body mass was compared between sexes using a two-sided Welch t-test (unequal variances not assumed), reporting the mean difference with its 95% confidence interval and Cohen's d. Within the control group, body mass at T0 and T28 was compared with a paired t-test, with a Wilcoxon signed-rank test as a sensitivity analysis. Analyses used R 4.5.2.</p>
+        <p class="small muted">中文：雌雄体重采用双侧 Welch t 检验（不假设方差齐性），报告均值差、95% CI 与 Cohen's d；对照组 T0 与 T28 采用配对 t 检验，并以 Wilcoxon 符号秩检验作敏感性分析。分析使用 R 4.5.2。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>两组比较先写设计（独立/配对、双侧、α），默认 Welch；用 tidy 取 estimate 与 CI，用 effectsize 取 d；配对数据必须配对检验；结果表与 p 值并列 CI；「不显著」只说没有证据。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch11">
+        <li><label><input type="checkbox"><span>我能说出 Welch 与 Student 的区别及默认选择</span></label></li>
+        <li><label><input type="checkbox"><span>我能从 tidy(t.test()) 读出 estimate 与 95% CI</span></label></li>
+        <li><label><input type="checkbox"><span>我能计算并解释 Cohen's d 及其 CI</span></label></li>
+        <li><label><input type="checkbox"><span>我知道配对数据不能当独立两组处理</span></label></li>
+        <li><label><input type="checkbox"><span>我能把「不显著」写成「no evidence of a difference」</span></label></li>
+        <li><label><input type="checkbox"><span>我的结果表每一行都有 estimate 与 CI</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch11">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：两组比较",
+          "questions": [
+            { "type": "mcq", "q": "R 的 t.test() 默认使用哪种方差假设？",
+              "options": ["方差齐（Student）", "方差不齐（Welch）", "不假设任何分布", "由数据自动选择"], "answer": 1,
+              "explain": "var.equal = FALSE 是默认值，即 Welch t；想用 Student 必须显式 var.equal = TRUE。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "p = 0.048 意味着差异很大。",
+              "answer": false,
+              "explain": "p 只与「差异 / 不确定性」的比值有关；差异大小看 estimate 与 CI。本例 d = −0.52。", "skill": "stats", "difficulty": 1 },
+            { "type": "mcq", "q": "同一批个体处理前后比较，正确检验是？",
+              "options": ["独立 t 检验", "配对 t 检验", "卡方检验", "ANOVA"], "answer": 1,
+              "explain": "同个体两次测量 → 先算差值再做配对 t（或 Wilcoxon 符号秩）。", "skill": "stats", "difficulty": 1 },
+            { "type": "fill", "q": "取检验结果的均值差与 CI：____(t.test(...))。",
+              "answer": ["tidy"], "explain": "broom::tidy() 把 htest 变成一行 tibble：estimate、conf.low、conf.high、p.value。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "方差比检验 p = 0.0025 说明？",
+              "options": ["方差齐性成立", "方差不齐的证据强，Welch 更合适", "必须改用非参数检验", "数据有错"], "answer": 1,
+              "explain": "方差比检验显著 → 不用 Student；Welch 不假设方差齐性，仍然可用。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "配对比较 p = 0.446，正确结论是？",
+              "options": ["证明没有差异", "没有证据表明有差异", "差异很大", "样本量不足所以无效"], "answer": 1,
+              "explain": "不显著 = 没有证据；不能说「证明没有差异」。CI 宽也说明估计不确定。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：计算标准化均值差。",
+              "code": "d <- ____(body_mass_g ~ sex, data = pika)",
+              "blanks": [ { "answer": ["cohens_d"] } ],
+              "explain": "effectsize::cohens_d() 给 d 与 95% CI。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "同样的 Cohen's d，n 越大 p 越小。",
+              "answer": true,
+              "explain": "p 依赖 n；d 不依赖样本量。所以「p 小」不能推出「效应大」。", "skill": "stats", "difficulty": 2 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 data/；结果表与方法文段同步更新。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>stats_two_group.csv</code></td><td>3 个比较的 estimate + CI + p</td><td>ch12 多组比较、ch14 论文表</td></tr>
+            <tr><td><code>methods_two_group.md</code></td><td>设计/检验/效应量/软件版本</td><td>论文 Methods 草稿</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：三组及以上不能用两两 t 检验硬凑——第 12 章用 ANOVA 与事后比较控制多重比较。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+          <a class="btn" href="../cheatsheets.html#report-sentences">速查：统计报告句型</a>
+          <a class="btn" href="../datasets.html#pika-repeated">数据集：重复测量</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

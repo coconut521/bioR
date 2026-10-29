@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统计导航：先设计，再选检验 | bioR</title>
+<meta name="description" content="按结局类型、组数与设计选择统计检验的决策树：t/Wilcoxon、ANOVA/Kruskal、卡方/Fisher、生存分析；含 R 函数、前提、效应量、报告句型与常见误用。">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/print.css" media="print">
+</head>
+<body data-page="special" data-special="stats-nav">
+<main class="container" id="main">
+
+  <p class="crumbs"><a href="index.html">首页</a> / 统计导航</p>
+
+  <header class="special-hero">
+    <span class="kicker">STATS NAVIGATOR · DECISION TREE</span>
+    <h1>统计导航</h1>
+    <p class="lede">「我该用什么检验」不该靠搜索记忆。回答四个问题，得到推荐检验、R 函数、前提、效应量与报告模板——以及最常见的误用。</p>
+    <div class="cover-meta"><span>决策树</span><span>6 类结果</span><span>结果卡</span><span>可打印总表</span></div>
+  </header>
+
+  <section id="chooser">
+    <h2>决策树</h2>
+    <div class="tree-panel">
+      <div class="tree-crumb" id="tree-crumb"></div>
+      <p class="tree-q" id="tree-q">结局变量是什么类型？</p>
+      <div class="tree-opts" id="tree-opts"></div>
+      <div id="tree-result"></div>
+    </div>
+    <p class="small muted">选择会记录在页面上，可随时「重新开始」。结果卡给出章节链接与速查表入口。</p>
+  </section>
+
+  <section id="matrix">
+    <h2>检验选择总表（可打印）</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <caption>结局类型 × 设计 × 假设 → 检验；默认双侧、α = 0.05。</caption>
+        <thead><tr><th scope="col">结局</th><th scope="col">设计</th><th scope="col">推荐检验</th><th scope="col">R 函数</th><th scope="col">效应量</th></tr></thead>
+        <tbody>
+          <tr><td>连续</td><td>两组独立，近似正态</td><td>Welch t</td><td><code>t.test(x ~ g)</code></td><td>Cohen's d</td></tr>
+          <tr><td>连续</td><td>两组独立，偏态/有序</td><td>Wilcoxon rank-sum</td><td><code>wilcox.test(x ~ g)</code></td><td>秩二列相关 r</td></tr>
+          <tr><td>连续</td><td>两组配对</td><td>配对 t / Wilcoxon signed-rank</td><td><code>t.test(x, y, paired = TRUE)</code></td><td>dz</td></tr>
+          <tr><td>连续</td><td>三组以上独立</td><td>ANOVA + Tukey</td><td><code>aov()</code> + <code>TukeyHSD()</code></td><td>η² / ω²</td></tr>
+          <tr><td>连续</td><td>三组以上，偏态</td><td>Kruskal–Wallis + Dunn</td><td><code>kruskal.test()</code></td><td>ε²</td></tr>
+          <tr><td>连续</td><td>重复测量</td><td>混合效应模型</td><td><code>lmer()</code></td><td>固定效应 + ICC</td></tr>
+          <tr><td>连续</td><td>连续预测变量</td><td>线性回归</td><td><code>lm()</code></td><td>斜率 / R²</td></tr>
+          <tr><td>二分类</td><td>两组独立</td><td>卡方 / Fisher</td><td><code>chisq.test()</code></td><td>OR / Cramér's V</td></tr>
+          <tr><td>二分类</td><td>两组配对</td><td>McNemar</td><td><code>mcnemar.test()</code></td><td>OR</td></tr>
+          <tr><td>二分类</td><td>多变量</td><td>逻辑回归</td><td><code>glm(family = binomial)</code></td><td>OR + CI</td></tr>
+          <tr><td>生存时间</td><td>两组/多组</td><td>Kaplan–Meier + log-rank</td><td><code>survdiff()</code></td><td>HR</td></tr>
+          <tr><td>生存时间</td><td>多变量</td><td>Cox 回归</td><td><code>coxph()</code></td><td>HR + CI</td></tr>
+          <tr><td>计数</td><td>率/频数</td><td>Poisson 回归</td><td><code>glm(family = poisson)</code></td><td>IRR</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="assumptions">
+    <h2>前提检查清单</h2>
+    <div class="unit-grid">
+      <article class="unit-card"><h3>t / ANOVA</h3><p class="uc-body">残差近似正态（图 + Shapiro 辅助）；组内方差相近（Levene）；独立观测（配对/重复要用对应设计）。</p></article>
+      <article class="unit-card"><h3>Wilcoxon</h3><p class="uc-body">独立与配对版本不同；差值分布近似对称时可用符号秩；大量并列值时报告方法。</p></article>
+      <article class="unit-card"><h3>卡方</h3><p class="uc-body">期望频数 ≥ 5（否则 Fisher）；2×2 用 Yates 校正或 Fisher；R×C 表看残差。</p></article>
+      <article class="unit-card"><h3>回归</h3><p class="uc-body">残差 vs 拟合值无异方差；无强杠杆点；共线性（VIF）；外推边界。</p></article>
+    </div>
+  </section>
+
+  <section id="sentence">
+    <h2>报告句型生成器</h2>
+    <label class="small" for="sent-test">选择检验</label>
+    <select id="sent-test" class="filter-select">
+      <option value="welch">Welch t</option>
+      <option value="paired">配对 t</option>
+      <option value="wilcox">Wilcoxon</option>
+      <option value="anova">ANOVA</option>
+      <option value="chisq">卡方 / Fisher</option>
+      <option value="cox">Cox 回归</option>
+    </select>
+    <pre class="ex-code" id="sent-out" style="margin-top:12px"><code class="r"></code></pre>
+    <p class="small muted">把占位符替换成你的数字；p 值不超过 3 位有效数字，CI 与效应量同时报告。</p>
+  </section>
+
+  <section class="further">
+    <h2>延伸</h2>
+    <div class="further-links">
+      <a class="btn" href="cheatsheets.html#table1">速查：描述统计与 Table 1</a>
+      <a class="btn" href="cheatsheets.html#report-sentences">速查：报告句型</a>
+      <a class="btn" href="chapters/ch11-two-group.html">教材：ch11 两组比较</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/bior-core.js"></script>
+<script src="assets/js/data/course-toc.js"></script>
+<script src="assets/js/data/glossary-data.js"></script>
+<script src="assets/js/data/cheatsheets-data.js"></script>
+<script src="assets/js/data/search-index.js"></script>
+<script src="assets/js/highlight-r.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+<script src="assets/js/glossary.js"></script>
+<script src="assets/js/presenter.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/pages/stats-nav.js"></script>
+</body>
+</html>

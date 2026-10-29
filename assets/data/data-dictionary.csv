@@ -1,0 +1,49 @@
+file,variable,type,unit,n_missing,allowed_range,description
+pika_physiology.csv,id,chr,—,0,P001–P060,individual id; one row = one individual
+pika_physiology.csv,altitude_m,dbl,m,0,3200/4100/5000,sampling-site altitude
+pika_physiology.csv,altitude_group,fct,—,0,low<mid<high,ordered altitude factor
+pika_physiology.csv,sex,fct,—,0,"F,M",sex
+pika_physiology.csv,body_mass_g,dbl,g,0,110–240,"body mass; 2 planted extremes (P023, P048)"
+pika_physiology.csv,body_length_mm,dbl,mm,0,145–235,body length
+pika_physiology.csv,hemoglobin_g_l,dbl,g/L,2,100–260,hemoglobin; right-skewed; NA = hemolysis
+pika_physiology.csv,hematocrit_pct,dbl,%,0,30–65,hematocrit
+pika_physiology.csv,glucose_mmol_l,dbl,mmol/L,0,3–13,blood glucose
+pika_physiology.csv,batch,fct,—,0,B1–B3,measurement batch
+pika_physiology.csv,measured_on,date,—,0,2026-05,measurement date
+pika_repeated.csv,id,chr,—,0,R01–R12,individual id; 3 visits each
+pika_repeated.csv,treatment,fct,—,0,control/hypoxia,treatment arm
+pika_repeated.csv,timepoint,fct,—,0,T0/T14/T28,visit (days)
+pika_repeated.csv,body_mass_g,dbl,g,0,120–220,mass; ICC ≈ 0.5 by design
+pika_repeated.csv,hemoglobin_g_l,dbl,g/L,0,115–235,hemoglobin
+pika_repeated.csv,batch,fct,—,0,B1/B2,measurement batch
+pika_survival.csv,id,chr,—,0,S001–S060,individual id
+pika_survival.csv,treatment,fct,—,0,control/hypoxia,treatment arm
+pika_survival.csv,sex,fct,—,0,F/M,sex
+pika_survival.csv,body_mass_g,dbl,g,0,120–220,baseline mass
+pika_survival.csv,time_days,dbl,days,0,"> 0, ≤ 60",event time or censoring time
+pika_survival.csv,status,int,—,0,"0 = censored, 1 = died",event indicator
+pika_rnaseq_counts.csv,gene_id,chr,—,0,G00001–G02000,gene id (join key)
+pika_rnaseq_counts.csv,gene_name,chr,—,0,Pk0001–Pk2000,gene symbol
+pika_rnaseq_counts.csv,C1–C6 / H1–H6,int,counts,0,≥ 0 integers,raw counts; 80 true DE genes; batch2 shifts 200 genes
+pika_rnaseq_metadata_raw.csv,sample_id,chr,—,0,C1…H6 (+3 planted mismatches),"raw sample ids: H-5, H-6, ' C3' are broken"
+pika_rnaseq_metadata_raw.csv,group,chr,—,0,control/hypoxia,group
+pika_rnaseq_metadata_raw.csv,batch,chr,—,0,batch1/batch2,sequencing batch
+pika_rnaseq_metadata_raw.csv,sex,chr,—,0,F/M,sex
+pika_rnaseq_metadata_raw.csv,library_size,dbl,reads,0,> 0,column sums of counts
+pika_rnaseq_metadata_clean.csv,sample_id,chr,—,0,C1…H6,clean ids matching counts columns
+pika_rnaseq_metadata_clean.csv,group,fct,—,0,control/hypoxia,group
+pika_rnaseq_metadata_clean.csv,batch,fct,—,0,batch1/batch2,sequencing batch
+pika_rnaseq_metadata_clean.csv,sex,fct,—,0,F/M,sex
+pika_rnaseq_metadata_clean.csv,library_size,dbl,reads,0,> 0,column sums of counts
+pika_annotation.csv,gene_id,chr,—,0,G00001–G02000,gene id
+pika_annotation.csv,symbol,chr,—,0,Pk0001–Pk2000,gene symbol
+pika_annotation.csv,description,chr,—,0,text,one-line function (simulated)
+pika_annotation.csv,go_bp,chr,—,0,GO ids;…,GO biological process terms
+pika_annotation.csv,kegg_pathway,chr,—,0,ko ids;…,KEGG pathways
+plate_reader_raw.csv,(3 leading comment lines),—,—,0,skip = 3,instrument header comments
+plate_reader_raw.csv,well,chr,—,0,A01–H12,well position
+plate_reader_raw.csv,od600,dbl,OD,0,0.02–1.6,OD600 reading
+plate_reader_raw.csv,temperature_c,dbl,°C,0,36–38,plate temperature
+plate_reader_raw.csv,cycle,int,—,0,1,kinetic cycle index
+pika_lab_notebook.xlsx,sheet: samples,sheet,—,0,60 rows,"id, sampled_on, weighed_by, note"
+pika_lab_notebook.xlsx,sheet: incidents,sheet,—,0,5 rows,explains the 2 hemoglobin NAs and 2 mass extremes

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 16 章 生存分析：时间到事件 | bioR</title>
+<meta name="description" content="删失不是缺失：Kaplan–Meier 曲线、log-rank、Cox 风险比与 PH 假设；60 天低氧生存实验，交付 KM 图（含风险表）与 stats_cox.csv。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch16" data-part="IV">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 16 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 16 · SURVIVAL</span><span>STAGE IV · ADVANCED</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">16</div>
+          <div class="cover-copy">
+            <h1>生存分析：时间到事件</h1>
+            <p class="cover-lede">到第 60 天还活着的个体不是「缺失值」——它们提供了「至少活到 60 天」的信息。删掉它们，等于把最长寿的个体从曲线里抹去。</p>
+            <p class="cover-question"><b>本章科研问题：</b>低氧是否缩短生存时间？到终点仍存活的个体，信息该怎么用？</p>
+            <div class="cover-meta">
+              <span>90–120 MIN</span><span>前置 ch13 · ch15</span><span>数据 pika_survival.csv</span><span>交付 fig_survival.svg · stats_cox.csv</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>区分事件时间与删失时间，知道删失为什么不是缺失。</li>
+          <li>读 Kaplan–Meier 曲线与中位生存期（含 95% CI）。</li>
+          <li>用 log-rank 比较曲线，用 Cox 模型报告风险比 HR。</li>
+          <li>检查 PH 假设（<code>cox.zph()</code>），知道不满足时该怎么做。</li>
+          <li>交付带风险表的 KM 图与 Cox 结果表。</li>
+        </ul>
+        <p class="small muted">前置：第 13、15 章；数据：<code>pika_survival.csv</code>（60 只，60 天随访）；交付：<code>fig_survival.svg</code>、<code>stats_cox.csv</code>。</p>
+      </section>
+
+      <div class="research">
+        <p>60 只鼠兔随机分到对照与低氧组，随访 60 天。终点是死亡；到 60 天仍存活、或中途失访的个体记为<b>删失</b>（status = 0）。研究问题是：低氧是否缩短生存时间？HR 有多大？</p>
+      </div>
+
+      <h2>1. 删失：不是缺失，是「至少活到这里」</h2>
+      <p>先数清楚：每组 30 只，对照 21 个事件 / 9 个删失，低氧 27 个事件 / 3 个删失。删失个体在离开风险集之前一直贡献信息，不能当缺失删除。</p>
+
+      <article class="example-card" id="ch16-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：事件、删失与随访时间</h3>
+          <div class="ex-meta"><span class="tag">dplyr</span><span class="tag green">先数清楚</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch16-ex-01"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(survival)
+})
+d &lt;- read_csv(here::here("assets/data/pika_survival.csv"), show_col_types = FALSE) |&gt;
+  mutate(status = as.integer(status), treatment = factor(treatment))
+d |&gt;
+  group_by(treatment) |&gt;
+  summarise(n = n(), events = sum(status), censored = sum(status == 0),
+            median_follow = median(time_days), max_follow = max(time_days)) |&gt;
+  ungroup() |&gt;
+  as.data.frame()</code></pre>
+        <div class="ex-output" data-output-for="ch16-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch16-ex-01">  treatment  n events censored median_follow max_follow
+1   control 30     21        9            45         60
+2   hypoxia 30     27        3            31         60</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>events / censored</b>：对照 21/9，低氧 27/3；删失比例不同，不能直接比原始死亡数。</li>
+            <li><b>median_follow</b>：随访时间的中位数；对照 45 天、低氧 31 天，低氧组更早到达终点。</li>
+            <li><b>max_follow = 60</b>：所有个体最多随访 60 天；到 60 天仍存活的记录为删失。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把 <code>status == 0</code> 的行删掉再算平均生存时间：最长寿的个体被系统性剔除，生存被低估、组间差被夸大。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 4, "vars": { "d": "60 × 4" }, "out": "", "note": "读入生存表并固定 status/treatment 类型", "dataframe": null },
+          { "line": 6, "vars": {}, "out": "", "note": "按处理组汇总", "dataframe": null },
+          { "line": 8, "vars": {}, "out": "", "note": "事件、删失、随访时间分别计数", "dataframe": null },
+          { "line": 11, "vars": {}, "out": "control 21 events / 9 censored；hypoxia 27 / 3", "note": "删失不是缺失，仍留在风险集", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="timeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "删失个体在时间线上发生了什么？",
+          "frames": [
+            { "subjects": [
+                { "id": "S001 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 31, "type": "end", "label": "死亡（event）" } ] },
+                { "id": "S003 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor", "label": "60 天仍存活（censor）" } ] },
+                { "id": "S002 hypo", "events": [ { "t": 0, "type": "start" }, { "t": 40, "type": "end", "label": "死亡（event）" } ] },
+                { "id": "S040 hypo", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor", "label": "60 天仍存活（censor）" } ] }
+              ], "tMax": 60, "unit": " d",
+              "note": "实心段到事件为止；带叉的终点是删失。删失不是「没观测到」，而是「观测到 60 天仍未死亡」。" },
+            { "subjects": [
+                { "id": "S001 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 31, "type": "end" } ] },
+                { "id": "S005 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor" } ] },
+                { "id": "S003 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor" } ] },
+                { "id": "S002 hypo", "events": [ { "t": 0, "type": "start" }, { "t": 40, "type": "end" } ] },
+                { "id": "S019 ctrl", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor" } ] },
+                { "id": "S040 hypo", "events": [ { "t": 0, "type": "start" }, { "t": 60, "type": "censor" } ] }
+              ], "tMax": 60, "unit": " d",
+              "note": "风险集随时间缩小：每个事件发生时，分母是当时仍在随访的人数。KM 用风险集算条件生存概率，而不是简单死亡比例。" }
+          ]
+        }</script>
+      </div>
+
+      <h2>2. KM 曲线与中位生存</h2>
+      <p>Kaplan–Meier 在每个事件时间点更新生存概率；中位生存是曲线首次降到 0.5 的时间。低氧组中位 31 天，对照组 46 天——但要看 CI，而不是只报一个点。</p>
+
+      <figure class="plot-stage" data-figure="ch16-km">
+        <div class="plot-stage-head">
+          <span>图 16.1 · 60 天生存曲线（含风险表）</span>
+          <a href="../assets/figures/chapters/ch16-km.pdf" download>下载 PDF</a>
+        </div>
+        <div class="plot-stage-canvas">
+          <img src="../assets/figures/chapters/ch16-km.svg"
+               alt="低氧组与对照组的 Kaplan–Meier 生存曲线：低氧组下降更快，60 天时生存概率约 0.08；曲线上的短竖线为删失，下方为 0/20/40/60 天的风险人数。"
+               width="1200" height="590">
+        </div>
+        <figcaption>图 16.1 · 60 天生存曲线与风险表；n = 30/30；低氧组中位生存 31 天（95% CI 22–44），对照组 46 天（35–未达）；log-rank p = 0.0098；竖线为删失，删失个体仍留在风险集。</figcaption>
+        <details class="plot-code">
+          <summary>查看绘图代码</summary>
+          <pre><code class="r">tools/figures/fig_ch16_km.R — build_figure() 由 render-figures.R 渲染</code></pre>
+        </details>
+      </figure>
+
+      <article class="example-card" id="ch16-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：中位生存与 95% CI</h3>
+          <div class="ex-meta"><span class="tag">survfit</span><span class="tag blue">KM</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch16-ex-02"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(survival)
+})
+d &lt;- read_csv(here::here("assets/data/pika_survival.csv"), show_col_types = FALSE) |&gt;
+  mutate(status = as.integer(status), treatment = factor(treatment))
+fit &lt;- survfit(Surv(time_days, status) ~ treatment, data = d)
+tb &lt;- summary(fit)$table
+data.frame(
+  group = unname(sub("treatment=", "", rownames(tb))),
+  n = unname(tb[, "records"]),
+  events = unname(tb[, "events"]),
+  median_days = unname(round(tb[, "median"], 1)),
+  LCL = unname(round(tb[, "0.95LCL"], 1)),
+  UCL = unname(round(tb[, "0.95UCL"], 1)),
+  row.names = NULL
+)</code></pre>
+        <div class="ex-output" data-output-for="ch16-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch16-ex-02">    group  n events median_days LCL UCL
+1 control 30     21          46  35  NA
+2 hypoxia 30     27          31  22  44</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>control：46 天（35–未达）</b>：CI 上界未达，因为曲线在 60 天前没有降到足够低。</li>
+            <li><b>hypoxia：31 天（22–44）</b>：中位生存更短，CI 也更窄。</li>
+            <li><b>中位生存 ≠ 平均生存</b>：删失会让均值不可估；中位数是 KM 的标准汇总。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把「60 天生存率」当「治愈率」，或只报中位数不报 CI；中位生存缺失（曲线未降到 0.5）时应写「未达」，不能写 0。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 6, "vars": { "fit": "survfit(...)" }, "out": "", "note": "按组估计 KM 曲线", "dataframe": null },
+          { "line": 7, "vars": { "tb": "summary(fit)$table" }, "out": "", "note": "取每组的中位生存与 CI", "dataframe": null },
+          { "line": 8, "vars": {}, "out": "control 46 (35–NA)；hypoxia 31 (22–44)", "note": "对照组中位未达上限；CI 必须一起报", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. log-rank 与 Cox：曲线差与风险比</h2>
+      <p>log-rank 检验整条曲线是否相同；Cox 模型给出调整协变量后的风险比 HR。<b>HR = 2.13</b> 表示任一时点低氧组的瞬时死亡风险约是对照的 2 倍，不是「死亡率高 113%」的绝对表述。</p>
+
+      <article class="example-card" id="ch16-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：log-rank 与 Cox HR</h3>
+          <div class="ex-meta"><span class="tag">survdiff · coxph</span><span class="tag green">效应量</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch16-ex-03"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(survival)
+})
+d &lt;- read_csv(here::here("assets/data/pika_survival.csv"), show_col_types = FALSE) |&gt;
+  mutate(status = as.integer(status), treatment = factor(treatment))
+lr &lt;- survdiff(Surv(time_days, status) ~ treatment, data = d)
+cox &lt;- coxph(Surv(time_days, status) ~ treatment, data = d)
+s &lt;- summary(cox)
+r1 &lt;- data.frame(
+  test = "log-rank",
+  value = round(lr$chisq, 2), lower = NA, upper = NA,
+  p = signif(pchisq(lr$chisq, df = 1, lower.tail = FALSE), 3)
+)
+r2 &lt;- data.frame(
+  test = paste0("Cox HR: ", rownames(s$conf.int)),
+  value = round(s$conf.int[, "exp(coef)"], 2),
+  lower = round(s$conf.int[, "lower .95"], 2),
+  upper = round(s$conf.int[, "upper .95"], 2),
+  p = signif(s$coefficients[, "Pr(&gt;|z|)"], 3)
+)
+rbind(r1, r2)</code></pre>
+        <div class="ex-output" data-output-for="ch16-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch16-ex-03">                      test value lower upper       p
+1                 log-rank  6.67    NA    NA 0.00983
+2 Cox HR: treatmenthypoxia  2.13  1.19  3.84 0.01140</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>log-rank χ² = 6.67，p = 0.0098</b>：整条曲线有差异；它不给出效应量。</li>
+            <li><b>HR = 2.13（1.19–3.84），p = 0.0114</b>：低氧的瞬时死亡风险约为对照的 2 倍。</li>
+            <li><b>CI 很宽</b>：60 只、30 个事件，HR 的方向明确但精度有限；报告 CI，不只报 p。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>用 t 检验比较生存时间；或把 HR 当绝对风险差。HR 是相对风险，必须连同基线风险/生存曲线一起解释。</p>
+        </div>
+      </article>
+
+      <h2>4. PH 假设：HR 是否随时间恒定</h2>
+      <p>Cox 模型假设风险比不随时间变化。用 <code>cox.zph()</code> 检查：p 大表示没有证据反对 PH；p 小则要分层、加时变项或改用其他模型。</p>
+
+      <article class="example-card" id="ch16-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：cox.zph 检查 PH</h3>
+          <div class="ex-meta"><span class="tag">cox.zph</span><span class="tag amber">前提检查</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch16-ex-04"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(survival)
+})
+d &lt;- read_csv(here::here("assets/data/pika_survival.csv"), show_col_types = FALSE) |&gt;
+  mutate(status = as.integer(status), treatment = factor(treatment))
+cox &lt;- coxph(Surv(time_days, status) ~ treatment, data = d)
+z &lt;- cox.zph(cox)
+data.frame(
+  term = rownames(z$table),
+  chisq = round(z$table[, "chisq"], 2),
+  df = z$table[, "df"],
+  p = round(z$table[, "p"], 3)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch16-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch16-ex-04">               term chisq df     p
+treatment treatment  0.02  1 0.881
+GLOBAL       GLOBAL  0.02  1 0.881</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>treatment χ² = 0.02，p = 0.881</b>：没有证据表明 HR 随时间变化。</li>
+            <li><b>GLOBAL 同样 p = 0.881</b>：整体 PH 假设通过。</li>
+            <li><b>p 大不是「证明 PH 成立」</b>：只是没有足够证据反对；仍要看 KM 曲线是否交叉。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>不看 PH 就直接解释 HR；或 PH 不满足时硬报一个「平均 HR」。曲线交叉时 HR 可能没有单一含义。</p>
+        </div>
+      </article>
+
+      <h2>5. 交付：KM 图（含风险表）与 Cox 表</h2>
+      <p>最终交付两张东西：一张能独立读懂的 KM 图（含删失标记与风险人数），一张 Cox 结果表（HR、95% CI、p）。图由代码生成，数字与表来自同一次运行。</p>
+
+      <article class="example-card" id="ch16-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：fig_survival.svg + stats_cox.csv</h3>
+          <div class="ex-meta"><span class="tag">patchwork</span><span class="tag green">交付物</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch16-ex-05"><code class="r">suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(survival); library(broom)
+  library(ggplot2); library(patchwork)
+})
+d &lt;- read_csv(here::here("assets/data/pika_survival.csv"), show_col_types = FALSE) |&gt;
+  mutate(status = as.integer(status), treatment = factor(treatment))
+fit &lt;- survfit(Surv(time_days, status) ~ treatment, data = d)
+cox &lt;- coxph(Surv(time_days, status) ~ treatment, data = d)
+s &lt;- summary(cox)
+dir.create(here::here("data"), showWarnings = FALSE)
+dir.create(here::here("figures"), showWarnings = FALSE)
+res &lt;- data.frame(
+  term = rownames(s$conf.int),
+  HR = round(s$conf.int[, "exp(coef)"], 3),
+  lower = round(s$conf.int[, "lower .95"], 3),
+  upper = round(s$conf.int[, "upper .95"], 3),
+  p = signif(s$coefficients[, "Pr(&gt;|z|)"], 3)
+)
+write_csv(res, here::here("data/stats_cox.csv"))
+km &lt;- broom::tidy(fit)
+km$strata &lt;- factor(km$strata, levels = c("treatment=control", "treatment=hypoxia"))
+p_km &lt;- ggplot(km, aes(time, estimate, colour = strata)) +
+  geom_step(linewidth = .55) +
+  geom_point(data = km[km$n.censor &gt; 0, ], shape = 3, size = 1.6) +
+  scale_colour_manual(values = c("treatment=control" = "#56B4E9", "treatment=hypoxia" = "#D55E00"),
+                      breaks = c("treatment=control", "treatment=hypoxia"),
+                      labels = c("control", "hypoxia")) +
+  coord_cartesian(ylim = c(0, 1)) +
+  labs(x = "Days", y = "Survival probability", colour = "Treatment") +
+  theme_classic(base_size = 8)
+tt &lt;- c(0, 20, 40, 60)
+sm &lt;- summary(fit, times = tt)
+risk &lt;- data.frame(time = sm$time, strata = sm$strata, n = sm$n.risk)
+risk$strata &lt;- factor(risk$strata, levels = c("treatment=control", "treatment=hypoxia"))
+p_risk &lt;- ggplot(risk, aes(time, strata, label = n)) +
+  geom_text(size = 2.6, colour = "#333333") +
+  scale_y_discrete(limits = c("treatment=hypoxia", "treatment=control"),
+                   labels = c("hypoxia", "control")) +
+  labs(x = NULL, y = NULL, title = "Number at risk") +
+  theme_classic(base_size = 7) +
+  theme(panel.grid = element_blank(), axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), plot.title = element_text(size = 7))
+p &lt;- p_km / p_risk + plot_layout(heights = c(3, 1))
+ggsave(here::here("figures/fig_survival.svg"), p, width = 183, height = 90, units = "mm")
+data.frame(
+  file = c("data/stats_cox.csv", "figures/fig_survival.svg"),
+  exists = file.exists(here::here(c("data/stats_cox.csv", "figures/fig_survival.svg"))),
+  logrank_p = c(signif(pchisq(survdiff(Surv(time_days, status) ~ treatment, data = d)$chisq,
+                              df = 1, lower.tail = FALSE), 2), NA)
+)</code></pre>
+        <div class="ex-output" data-output-for="ch16-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text" data-expected="ch16-ex-05">                      file exists logrank_p
+1       data/stats_cox.csv   TRUE    0.0098
+2 figures/fig_survival.svg   TRUE        NA</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>stats_cox.csv</b>：HR 2.134、95% CI 1.186–3.838、p 0.0114。</li>
+            <li><b>KM + 风险表</b>：0/20/40/60 天对照风险人数 30/26/18/8，低氧 30/22/12/2。</li>
+            <li><b>删失标记</b>：<code>n.censor &gt; 0</code> 的时间点画叉，读者能看出删失发生在哪里。</li>
+            <li><b>图注</b>：写 n、事件数、中位生存与 log-rank p；图离开正文也能读懂。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只交一张没有风险表的 KM 图，或图里的数字与稿件的 n/事件数对不上。图和表必须来自同一次运行、同一个数据集。</p>
+        </div>
+      </article>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：低氧生存分析</h2>
+        <p>把本章操作串成 <code>R/16_survival.R</code>，产出交付物。</p>
+        <ol class="task-steps">
+          <li><b>核对删失</b>：写出每组 n、事件、删失；确认最大随访 60 天。</li>
+          <li><b>KM</b>：中位生存 + 95% CI；画 KM 并加风险表。</li>
+          <li><b>检验</b>：log-rank + Cox；报告 HR、95% CI、p。</li>
+          <li><b>前提</b>：cox.zph；说明 PH 是否通过；不通过就改模型。</li>
+          <li><b>交付</b>：<code>data/stats_cox.csv</code> 与 <code>figures/fig_survival.svg</code>。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>删失个体全部保留；没有把 status=0 的行删掉。</li>
+            <li>图注含 n、事件数、中位生存与 log-rank p。</li>
+            <li>HR 与 CI 一起报告；没有把 HR 解释成绝对风险。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: Response must be a survival object</p>
+        <p><b>病因</b>：coxph() / survfit() 的公式只写了 <code>status</code>，没有 <code>Surv(time, status)</code>。</p>
+        <p><b>修复</b>：写成 <code>Surv(time_days, status) ~ treatment</code>。</p>
+        <p><b>预防</b>：生存模型先建 Surv 对象，再写协变量。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: There is only 1 group</p>
+        <p><b>病因</b>：subset 后只剩一个处理组，log-rank 没有可比较的第二组。</p>
+        <p><b>修复</b>：恢复对照组，或检查 subset 条件。</p>
+        <p><b>预防</b>：比较前 <code>table(d$treatment)</code>。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: Invalid survival times for this distribution</p>
+        <p><b>病因</b>：参数生存模型收到 ≤0 的时间，或时间/状态列错位。</p>
+        <p><b>修复</b>：检查 <code>summary(time)</code>；时间必须为正，状态为 0/1。</p>
+        <p><b>预防</b>：读入后立即检查 <code>range(time_days)</code> 与 <code>table(status)</code>。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>删失是信息，不是缺失。</b>删失个体告诉我们「至少活到 t」，KM 与 Cox 都会正确使用这段信息。把删失删掉，相当于只留下死亡者，生存被系统性低估；HR 也会偏向「处理更危险」。</p>
+      </div>
+      <div class="repro">
+        <p>本章 KM 图由 <code>survfit()</code> + <code>broom::tidy()</code> 生成，风险表来自 <code>summary(fit, times=...)</code>；示例 5 的图与表由同一脚本、同一次运行产出。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">Survival was analysed with Kaplan–Meier curves and a log-rank test; a Cox proportional-hazards model estimated the hazard ratio for hypoxia versus control (HR 2.13, 95% CI 1.19–3.84, p = 0.011), and the proportional-hazards assumption was checked with scaled Schoenfeld residuals (cox.zph, p = 0.88); censored observations were retained in the risk set.</p>
+        <p class="small muted">中文：生存数据用 Kaplan–Meier 曲线与 log-rank 检验分析；Cox 比例风险模型估计低氧相对对照的风险比（HR 2.13，95% CI 1.19–3.84，p = 0.011）；用缩放 Schoenfeld 残差检验 PH 假设（cox.zph，p = 0.88）；删失观测保留在风险集中。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>生存分析四件套：删失保留、KM 看曲线、log-rank 看整体差异、Cox 报 HR 与 CI。中位生存要带 CI；PH 假设要检查；HR 是相对风险，不是绝对死亡率。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch16">
+        <li><label><input type="checkbox"><span>我能解释删失为什么不是缺失</span></label></li>
+        <li><label><input type="checkbox"><span>我会读 KM 曲线与中位生存（含 95% CI）</span></label></li>
+        <li><label><input type="checkbox"><span>我知道 log-rank 与 Cox 各自回答什么问题</span></label></li>
+        <li><label><input type="checkbox"><span>我能把 HR 解释成相对风险，而不是绝对风险</span></label></li>
+        <li><label><input type="checkbox"><span>我会用 cox.zph 检查 PH 假设</span></label></li>
+        <li><label><input type="checkbox"><span>我能画出带风险表的 KM 图并写图注</span></label></li>
+        <li><label><input type="checkbox"><span>我不会把生存时间当连续变量做 t 检验</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch16">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：生存分析",
+          "questions": [
+            { "type": "mcq", "q": "到 60 天仍存活的个体（status = 0）应该？",
+              "options": ["从分析中删除", "作为删失保留在风险集", "改成 status = 1", "当成缺失值插补"], "answer": 1,
+              "explain": "删失提供「至少活到 60 天」的信息，必须保留。", "skill": "design", "difficulty": 1 },
+            { "type": "mcq", "q": "中位生存 31 天（95% CI 22–44）的正确读法是？",
+              "options": ["所有个体都活 31 天", "生存概率首次降到 0.5 的时间点", "平均死亡年龄", "31% 的个体死亡"], "answer": 1,
+              "explain": "KM 中位数是 S(t)=0.5 的时间，不是均值。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "HR = 2.13 的含义是？",
+              "options": ["低氧组死亡风险约是对照的 2.13 倍", "低氧组多活 2.13 天", "2.13% 的个体死亡", "生存概率提高 2.13 倍"], "answer": 0,
+              "explain": "HR 是瞬时风险的相对比，不是绝对风险或时间差。", "skill": "stats", "difficulty": 2 },
+            { "type": "fill", "q": "构造生存响应对象的函数：____(time_days, status)。",
+              "answer": ["Surv"], "explain": "Surv() 把时间与事件指示合成生存对象。", "skill": "syntax", "difficulty": 1 },
+            { "type": "tf", "q": "log-rank 检验显著就说明低氧组中位生存一定更短。",
+              "answer": false,
+              "explain": "log-rank 说明整条曲线不同；方向与幅度要看 KM 与中位生存/HR。", "skill": "stats", "difficulty": 2 },
+            { "type": "mcq", "q": "cox.zph 的 p = 0.88 说明？",
+              "options": ["PH 假设被证明成立", "没有证据反对 PH 假设", "模型一定正确", "HR 等于 0.88"], "answer": 1,
+              "explain": "p 大只是未发现违背 PH 的证据，不等于证明。", "skill": "stats", "difficulty": 2 },
+            { "type": "tf", "q": "把 HR 当作「死亡率高 113%」的绝对表述是准确的。",
+              "answer": false,
+              "explain": "HR 是相对风险；绝对风险差取决于基线风险。", "skill": "stats", "difficulty": 2 },
+            { "type": "mfill", "q": "补全：画 KM 曲线。",
+              "code": "fit <- ____(Surv(time_days, status) ~ treatment, data = d)",
+              "blanks": [ { "answer": ["survfit"] } ],
+              "explain": "survfit() 估计 KM 曲线；survdiff() 做 log-rank。", "skill": "syntax", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 figures/ 与 data/；图注写 n、事件数与 log-rank p。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>fig_survival.svg</code></td><td>KM 曲线 + 删失标记 + 风险表</td><td>ch17 样本结构对照</td></tr>
+            <tr><td><code>stats_cox.csv</code></td><td>Cox HR、95% CI、p</td><td>ch18 报告模板</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：第 17 章用 PCA、热图与聚类看 12 个 RNA-seq 样本的整体结构——第一轴是处理，还是批次？</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#survival">速查：生存分析</a>
+          <a class="btn" href="../cheatsheets.html#report-sentences">速查：统计报告句型</a>
+          <a class="btn" href="../clinic.html#case-survival-censoring">病例：删失被删掉</a>
+          <a class="btn" href="../stats-nav.html">统计导航</a>
+          <a class="btn" href="../datasets.html#pika-survival">数据集：生存实验</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>

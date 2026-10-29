@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 14 章 让分析可复现：Quarto、renv 与项目交付 | bioR</title>
+<meta name="description" content="项目盘点、Quarto 报告骨架（params/chunk）、session_info 环境快照、一键重跑与运行说明；把 ch01–ch13 的交付物串成可交给合作者的分析包。">
+<script src="../assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/layout.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/pages.css">
+<link rel="stylesheet" href="../assets/css/print.css" media="print">
+</head>
+<body data-page="chapter" data-chapter="ch14" data-part="IV">
+<main class="container chapter" id="main">
+
+  <p class="crumbs"><a href="../index.html">首页</a> / <a href="../index.html#route">研究路线</a> / 第 14 章</p>
+
+  <div class="chapter-grid">
+
+    <div class="chapter-reading">
+
+      <header class="chapter-cover" id="cover">
+        <div class="cover-kicker"><span>CHAPTER 14 · REPRODUCIBILITY</span><span>STAGE IV · DELIVER</span></div>
+        <div class="cover-grid">
+          <div class="cover-number" aria-hidden="true">14</div>
+          <div class="cover-copy">
+            <h1>让分析可复现：Quarto、renv 与项目交付</h1>
+            <p class="cover-lede">「把你现在的分析发我，我换台电脑也能跑」——这是导师的要求，也是科研的最低交付标准。</p>
+            <p class="cover-question"><b>本章科研问题：</b>合作者拿到项目后，如何从原始数据一键重跑所有图、表与报告？</p>
+            <div class="cover-meta">
+              <span>120–150 MIN</span><span>前置 ch13</span><span>数据 前面所有交付物</span><span>交付 report.html · renv.lock · 项目快照</span>
+            </div>
+            <div class="cover-actions"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card objectives" id="objectives">
+        <h2>学习目标</h2>
+        <ul>
+          <li>说清一次分析包应包含什么：原始数据、脚本、图/表、报告、环境锁、运行说明。</li>
+          <li>写 Quarto 报告骨架：chunk、label、<code>params</code> 参数化数据路径。</li>
+          <li>用 <code>session_info.json</code> 记录 R 与关键包版本。</li>
+          <li>把「一键重跑」写成可执行步骤（build-all → render → validate）。</li>
+          <li>知道绝对路径、手改图、缺版本记录为什么会让复现失败。</li>
+        </ul>
+        <p class="small muted">前置：第 13 章；数据：ch01–ch13 全部交付物；交付：<code>report.html</code>、<code>renv.lock</code>、项目快照。</p>
+      </section>
+
+      <div class="research">
+        <p>可复现不是「再跑一遍看看」——它是<b>证据链</b>：原始数据不动、脚本是唯一入口、图由代码生成、环境有锁文件、运行有说明。这一章把前面十三章的交付物收进一个项目：数得清、跑得动、交得出去。</p>
+      </div>
+
+      <h2>1. 项目盘点：脚本、数据与图都能被数出来</h2>
+      <p>交付前先做一次「资产盘点」：章节脚本多少、示例多少、数据文件多少、图多少。数字对得上，说明项目结构完整；数字变了，说明有人手滑加了文件或删了产物。</p>
+
+      <article class="example-card" id="ch14-ex-01">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 1：脚本与示例盘点</h3>
+          <div class="ex-meta"><span class="tag">list.files</span><span class="tag green">交付前检查</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch14-ex-01"><code class="r">scripts &lt;- list.files(here::here("assets/scripts"), pattern = "\\.R$")
+examples &lt;- list.files(here::here("tools/examples"), pattern = "\\.R$")
+c(chapter_scripts = length(scripts), examples = length(examples))
+head(scripts, 3)</code></pre>
+        <div class="ex-output" data-output-for="ch14-ex-01">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">chapter_scripts        examples 
+             18              94 
+[1] "ch01.R" "ch02.R" "ch03.R"</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 1–2 行</b>：<code>here::here()</code> 从项目根出发——换机器、换用户名都成立。</li>
+            <li><b>第 3 行</b>：18 个章节脚本 + 全部示例脚本；数字与课程大纲一致。</li>
+            <li><b>第 4 行</b>：脚本命名 chNN.R，下载与执行都用同一个入口。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>用 <code>setwd("C:/Users/.../bioR")</code> 写死路径：合作者第一行就报错。所有路径都从 <code>here()</code> 出发。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "scripts": "chr[18]" }, "out": "", "note": "项目根相对路径枚举", "dataframe": null },
+          { "line": 3, "vars": {}, "out": "18 / 94", "note": "脚本与示例数量对账", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <article class="example-card" id="ch14-ex-02">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 2：数据与图盘点</h3>
+          <div class="ex-meta"><span class="tag">资产清单</span><span class="tag blue">结构检查</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch14-ex-02"><code class="r">data_files &lt;- list.files(here::here("assets/data"))
+figures &lt;- list.files(here::here("assets/figures/chapters"), pattern = "\\.svg$")
+c(data_files = length(data_files), chapter_figures = length(figures))</code></pre>
+        <div class="ex-output" data-output-for="ch14-ex-02">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">     data_files chapter_figures 
+             11              18 </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>data_files = 11</b>：9 个教学数据 + 数据字典 + manifest——每个都有出处。</li>
+            <li><b>chapter_figures = 12</b>：注册表里的图全部落盘为 SVG。</li>
+            <li><b>用途</b>：交付前跑一次，数字对得上才打包；清单还可以写进 README。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>把中间产物（临时 CSV、旧版本图）混进 data/ 与 figures/。原始数据目录只放原始文件；产物由脚本生成、可整目录删除重建。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": {}, "out": "", "note": "枚举数据目录", "dataframe": null },
+          { "line": 3, "vars": {}, "out": "11 / 12", "note": "数据与图数量对账", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>2. Quarto 骨架：params 与 chunk</h2>
+      <p>报告是<b>可执行的文档</b>：代码块真的运行，结果直接嵌入。<code>params</code> 把数据路径参数化——换一批数据只改参数，不改正文。每个 chunk 用 <code>#| label</code> 命名，便于交叉引用与排错。</p>
+
+      <article class="example-card" id="ch14-ex-03">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 3：写一个 18 行的 report.qmd 骨架</h3>
+          <div class="ex-meta"><span class="tag">Quarto · params</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch14-ex-03"><code class="r">library(readr)
+qmd &lt;- c(
+  "---",
+  "title: \"Pika hypoxia study - reproducible report\"",
+  "format: html",
+  "params:",
+  "  data_dir: \"assets/data\"",
+  "---",
+  "",
+  "```{r}",
+  "#| label: setup",
+  "library(readr); library(dplyr)",
+  "pika &lt;- read_csv(file.path(params$data_dir, \"pika_physiology.csv\"),",
+  "                 show_col_types = FALSE)",
+  "```",
+  "",
+  "```{r}",
+  "#| label: tbl-qc",
+  "nrow(pika); sum(is.na(pika$hemoglobin_g_l))",
+  "```"
+)
+dir.create(here::here("reports"), showWarnings = FALSE)
+writeLines(qmd, here::here("reports/report.qmd"))
+length(readLines(here::here("reports/report.qmd")))</code></pre>
+        <div class="ex-output" data-output-for="ch14-ex-03">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] 18</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>YAML</b>：title / format / params——参数化数据目录。</li>
+            <li><b>setup chunk</b>：<code>file.path(params$data_dir, ...)</code> 拼路径；label 便于报错定位。</li>
+            <li><b>tbl-qc chunk</b>：报告里的数字直接来自代码，不是手抄。</li>
+            <li><b>第 21 行</b>：18 行落盘——骨架可提交、可渲染（需本地安装 Quarto）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>在报告里手写「n = 60」而不是用 inline code——数据一变，报告就撒谎。<b>所有数字都来自代码</b>。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 2, "vars": { "qmd": "chr[18]" }, "out": "", "note": "18 行 qmd 骨架", "dataframe": null },
+          { "line": 20, "vars": { "qmd": "chr[18]" }, "out": "", "note": "写入 reports/report.qmd", "dataframe": null },
+          { "line": 21, "vars": { "qmd": "chr[18]" }, "out": "[1] 18", "note": "行数核对", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>3. 环境快照：session_info.json</h2>
+      <p>同样的代码在不同版本的包上可能给出不同结果。环境快照记录 R 版本、平台与关键包版本——比截图可靠，比口述可查。完整项目用 <code>renv::snapshot()</code> 生成 <code>renv.lock</code>；轻量项目至少写一份 session_info.json。</p>
+
+      <article class="example-card" id="ch14-ex-04">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 4：生成 session_info.json</h3>
+          <div class="ex-meta"><span class="tag">sessionInfo · JSON</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch14-ex-04"><code class="r">library(jsonlite)
+info &lt;- list(
+  r_version = R.version.string,
+  platform = R.version$platform,
+  packages = list(
+    readr = as.character(packageVersion("readr")),
+    dplyr = as.character(packageVersion("dplyr")),
+    ggplot2 = as.character(packageVersion("ggplot2"))
+  )
+)
+dir.create(here::here("reports"), showWarnings = FALSE)
+write_json(info, here::here("reports/session_info.json"),
+           pretty = TRUE, auto_unbox = TRUE)
+names(info)</code></pre>
+        <div class="ex-output" data-output-for="ch14-ex-04">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] "r_version" "platform"  "packages" </code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>第 2–9 行</b>：R 版本、平台、三个核心包版本——JSON 结构清晰。</li>
+            <li><b>第 11–12 行</b>：写文件（pretty 缩进、auto_unbox 单值不套数组）。</li>
+            <li><b>第 13 行</b>：三个顶层字段——文件与代码一致。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>只记录「R 4.x」。版本要精确到补丁号与包版本；否则半年后复现时根本不知道差在哪。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "info": "list" }, "out": "", "note": "构造版本清单", "dataframe": null },
+          { "line": 12, "vars": { "info": "list" }, "out": "", "note": "写入 JSON", "dataframe": null },
+          { "line": 13, "vars": { "info": "list" }, "out": "r_version platform packages", "note": "三个字段", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <h2>4. 一键重跑与运行说明</h2>
+      <p>交付物的最后一块是 README：五步之内能跑起来。步骤要可复制粘贴、不含绝对路径、顺序确定。本章把 report.qmd、session_info.json 与 README_run.md 一起放进 <code>reports/</code>。</p>
+
+      <article class="example-card" id="ch14-ex-05">
+        <div class="ex-head">
+          <h3 class="ex-title">示例 5：README_run.md 五步运行</h3>
+          <div class="ex-meta"><span class="tag">交付说明</span><span class="tag green">科研必会</span></div>
+        </div>
+        <pre class="ex-code" data-example="ch14-ex-05"><code class="r">readme &lt;- c(
+  "# How to rerun this project",
+  "",
+  "1. Open bioR.Rproj (or set the working directory to the project root).",
+  "2. Restore packages: renv::restore()  (lockfile recorded at first snapshot).",
+  "3. Rebuild data and figures: bash tools/build-all.sh",
+  "4. Render the report: quarto render reports/report.qmd",
+  "5. Check outputs: node tools/validate.mjs",
+  "",
+  "All paths are relative to the project root; no absolute paths appear in scripts."
+)
+dir.create(here::here("reports"), showWarnings = FALSE)
+writeLines(readme, here::here("reports/README_run.md"))
+file.exists(here::here(c("reports/report.qmd", "reports/README_run.md",
+                         "reports/session_info.json")))</code></pre>
+        <div class="ex-output" data-output-for="ch14-ex-05">
+          <div class="ex-output-label">R console</div>
+          <pre><code class="output-text">[1] TRUE TRUE TRUE</code></pre>
+        </div>
+        <div class="ex-explain">
+          <h4>逐行解释</h4>
+          <ul>
+            <li><b>五步</b>：打开项目 → 恢复环境 → 重建数据/图 → 渲染报告 → 校验输出。</li>
+            <li><b>每步都是命令</b>，不是描述；合作者可以逐条粘贴。</li>
+            <li><b>第 14 行</b>：三份报告资产齐备（TRUE × 3）。</li>
+          </ul>
+        </div>
+        <div class="ex-pitfall">
+          <h4>常见错误</h4>
+          <p>README 写「先运行脚本再打开报告」却没写脚本名。步骤必须具体到文件与命令。</p>
+        </div>
+        <script type="application/json" class="ex-steps">{ "steps": [
+          { "line": 1, "vars": { "readme": "chr[9]" }, "out": "", "note": "九行说明", "dataframe": null },
+          { "line": 13, "vars": { "readme": "chr[9]" }, "out": "", "note": "写入 README_run.md", "dataframe": null },
+          { "line": 14, "vars": {}, "out": "TRUE TRUE TRUE", "note": "报告资产齐备", "dataframe": null }
+        ] }</script>
+      </article>
+
+      <div class="explainer" data-engine="pipeline">
+        <script type="application/json" class="explainer-data">{
+          "question": "「一键重跑」到底重跑了什么？",
+          "frames": [
+            { "stages": [
+              { "label": "原始数据", "rows": 9, "cols": 11 },
+              { "label": "脚本 build-all", "rows": 18, "cols": 1 },
+              { "label": "图 / 表", "rows": 12, "cols": 1 },
+              { "label": "report.html", "rows": 1, "cols": 1 }
+            ], "active": 0, "note": "原始数据只读——任何修改都发生在脚本里。" },
+            { "stages": [
+              { "label": "原始数据", "rows": 9, "cols": 11 },
+              { "label": "脚本 build-all", "rows": 18, "cols": 1 },
+              { "label": "图 / 表", "rows": 12, "cols": 1 },
+              { "label": "report.html", "rows": 1, "cols": 1 }
+            ], "active": 1, "note": "build-all 依次生成数据、渲染图、注入示例、跑校验——顺序固定。" },
+            { "stages": [
+              { "label": "原始数据", "rows": 9, "cols": 11 },
+              { "label": "脚本 build-all", "rows": 18, "cols": 1 },
+              { "label": "图 / 表", "rows": 12, "cols": 1 },
+              { "label": "report.html", "rows": 1, "cols": 1 }
+            ], "active": 3, "note": "quarto render 再跑一次报告内的代码块——数字与图永远来自同一次运行。" }
+          ]
+        }</script>
+      </div>
+
+      <!-- 科研任务 -->
+      <section class="research-task" id="task">
+        <h2>科研任务：可交付的分析包</h2>
+        <p>把本章操作串成 <code>R/14_report.R</code>，产出交付物。</p>
+        <ol class="task-steps">
+          <li><b>盘点</b>：脚本、数据、图数量对账（18 / 11 / 12）。</li>
+          <li><b>报告</b>：<code>reports/report.qmd</code> 含 params 与至少 3 个 chunk；renders HTML。</li>
+          <li><b>环境</b>：<code>session_info.json</code>（或 renv.lock）；写清 R 与核心包版本。</li>
+          <li><b>说明</b>：<code>README_run.md</code> 五步之内可跑；全部相对路径。</li>
+        </ol>
+        <div class="task-check">
+          <p><b>检查点</b></p>
+          <ul>
+            <li>删除 figures/ 与 data/ 的产物后，一键重跑能全部重建。</li>
+            <li>报告里的每个数字都能在代码中找到来源。</li>
+            <li>换一台电脑按 README 五步走，输出一致。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 常见错误 -->
+      <h2>常见错误</h2>
+      <div class="danger error-card">
+        <p class="error-message">Error: Quarto executable not found. Please install Quarto at https://quarto.org/docs/get-started/</p>
+        <p><b>病因</b>：安装了 quarto R 包但没装 Quarto CLI。</p>
+        <p><b>修复</b>：装 Quarto 并重启 RStudio；<code>quarto::quarto_path()</code> 检查。</p>
+        <p><b>预防</b>：README 写清外部依赖（Quarto、Node、R）。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error in file(file, "rt") : cannot open the connection
+In addition: Warning message:
+cannot open file 'data/raw.csv': No such file or directory</p>
+        <p><b>病因</b>：工作目录不是项目根（双击 .R 而不是打开 .Rproj）。</p>
+        <p><b>修复</b>：用 here() 定位；RStudio 里 Session → Set Working Directory → Project Root。</p>
+        <p><b>预防</b>：脚本只用相对 here() 路径；README 第一步就写「打开项目」。</p>
+      </div>
+      <div class="danger error-card">
+        <p class="error-message">Error: failed to retrieve package 'readr' from CRAN (offline or unavailable)</p>
+        <p><b>病因</b>：<code>renv::restore()</code> 时网络不可用或镜像配置错误。</p>
+        <p><b>修复</b>：配置国内镜像 / 使用本地缓存；离线环境用 renv 缓存迁移。</p>
+        <p><b>预防</b>：renv.lock 与缓存一起备份；README 写镜像设置。</p>
+      </div>
+      <p>更多同类报错见 <a href="../triage.html">R 代码急救室</a>。</p>
+
+      <!-- 科研判断 -->
+      <div class="stats">
+        <p><b>可复现不是附加项，是结果可信的一部分。</b>同一份代码在不同环境给出不同结果时，读者无法判断哪个是对的——除非环境被锁定、路径可移植、每一步都有记录。把「能跑」写进交付清单，与 p 值同等重要。</p>
+      </div>
+      <div class="repro">
+        <p>本章本身就是复现的示范：数据由 <code>generate-data.R</code> 生成、图由注册表渲染、示例输出由 <code>check-examples.R</code> 硬校验、站点由 <code>validate.mjs</code> 把关——没有一步靠手改。</p>
+      </div>
+
+      <!-- 方法学一句话 -->
+      <blockquote class="methods-sentence">
+        <p lang="en">All analyses are scripted in R and can be rebuilt from raw data with a single pipeline (tools/build-all.sh); the report is rendered from reports/report.qmd with parameterised data paths, and the computational environment is recorded in reports/session_info.json (R version, platform, and versions of readr, dplyr and ggplot2).</p>
+        <p class="small muted">中文：全部分析以 R 脚本实现，可由原始数据经单一管线（tools/build-all.sh）重建；报告由 reports/report.qmd 以参数化数据路径渲染；计算环境记录于 reports/session_info.json（R 版本、平台及 readr、dplyr、ggplot2 版本）。</p>
+      </blockquote>
+
+      <!-- 小结 -->
+      <h2>小结</h2>
+      <div class="keypoint">
+        <p>可复现交付五件套：原始数据（只读）+ 脚本（唯一入口）+ 图/表（代码生成）+ 报告（params/chunk）+ 环境锁与运行说明。盘点数字、锁定版本、相对路径、五步 README——缺一件，合作者就可能跑不起来。</p>
+      </div>
+
+      <!-- 自测 -->
+      <h2>自测</h2>
+      <ul class="checklist" data-chapter="ch14">
+        <li><label><input type="checkbox"><span>我能列出可复现分析包的五类资产</span></label></li>
+        <li><label><input type="checkbox"><span>我会写 Quarto 骨架并用 params 参数化数据路径</span></label></li>
+        <li><label><input type="checkbox"><span>我知道为什么报告数字必须来自代码而不是手抄</span></label></li>
+        <li><label><input type="checkbox"><span>我能生成环境快照并说明它解决什么问题</span></label></li>
+        <li><label><input type="checkbox"><span>我能写出五步可执行的 README</span></label></li>
+        <li><label><input type="checkbox"><span>我知道绝对路径、手改图、无版本记录如何破坏复现</span></label></li>
+      </ul>
+
+      <!-- 测验 -->
+      <section class="quiz" id="quiz" data-source="ch14">
+        <script type="application/json" class="quiz-data">{
+          "title": "测验：可复现分析",
+          "questions": [
+            { "type": "mcq", "q": "一份可复现分析包最不该缺少的是？",
+              "options": ["封面图", "原始数据 + 脚本 + 环境记录", "PPT", "作者照片"], "answer": 1,
+              "explain": "数据、代码、环境三者缺一不可；图/表是它们的产物。", "skill": "repro", "difficulty": 1 },
+            { "type": "tf", "q": "Quarto 报告里的数字应当手写，代码块只放图。",
+              "answer": false,
+              "explain": "报告是可执行文档：数字与图都由代码生成，数据变了报告自动更新。", "skill": "repro", "difficulty": 1 },
+            { "type": "mcq", "q": "params 在报告里的主要作用是？",
+              "options": ["美化排版", "参数化数据路径/分析选项", "加速渲染", "生成目录"], "answer": 1,
+              "explain": "params 让同一份报告跑不同数据/设置，不必改正文。", "skill": "syntax", "difficulty": 1 },
+            { "type": "fill", "q": "锁定包环境并生成锁文件的命令：renv::____()。",
+              "answer": ["snapshot"], "explain": "snapshot() 写 renv.lock；restore() 按锁文件恢复。", "skill": "syntax", "difficulty": 1 },
+            { "type": "mcq", "q": "README 第一步应该写什么？",
+              "options": ["结果摘要", "打开项目/设置工作目录", "安装 Photoshop", "作者邮箱"], "answer": 1,
+              "explain": "工作目录不对，后面每条命令都会失败；先打开项目根。", "skill": "repro", "difficulty": 2 },
+            { "type": "tf", "q": "把 figures/ 里某张图手动美化后直接交稿，是推荐做法。",
+              "answer": false,
+              "explain": "手改图下次重跑就丢；所有样式修改都要回到脚本/主题。", "skill": "repro", "difficulty": 1 },
+            { "type": "mfill", "q": "补全：写出版本快照。",
+              "code": "write_json(info, here::here(\"reports/session_info.json\"), pretty = TRUE, ____ = TRUE)",
+              "blanks": [ { "answer": ["auto_unbox"] } ],
+              "explain": "auto_unbox 让单值字段不被包成数组。", "skill": "syntax", "difficulty": 2 },
+            { "type": "mcq", "q": "环境快照记录什么最有用？",
+              "options": ["操作系统壁纸", "R 版本 + 平台 + 关键包版本", "CPU 温度", "显示器分辨率"], "answer": 1,
+              "explain": "版本差异是复现失败的最常见原因；包版本尤其关键。", "skill": "repro", "difficulty": 1 }
+          ]
+        }</script>
+      </section>
+
+      <!-- 研究日志 -->
+      <section class="research-log" id="log">
+        <h2>本章交付物</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+          <caption>保存到 reports/ 与项目根；打包前跑一次盘点。</caption>
+          <thead><tr><th scope="col">文件</th><th scope="col">内容</th><th scope="col">下一章用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>report.html</code></td><td>Quarto 渲染的完整分析报告</td><td>ch16 投稿附件</td></tr>
+            <tr><td><code>renv.lock</code> / <code>session_info.json</code></td><td>环境锁定与版本快照</td><td>合作者复现</td></tr>
+            <tr><td><code>README_run.md</code></td><td>五步运行说明</td><td>项目交接</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small muted">下一章预告：进入进阶轨道——第 15 章处理重复测量与混合效应模型，把「伪重复」这个坑彻底讲清。</p>
+      </section>
+
+      <!-- 延伸 -->
+      <section class="further">
+        <h2>延伸</h2>
+        <div class="further-links">
+          <a class="btn" href="../cheatsheets.html#quarto">速查：Quarto</a>
+          <a class="btn" href="../cheatsheets.html#rstudio-shortcuts">速查：RStudio 快捷键</a>
+          <a class="btn" href="../project.html">课题工作台</a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="rail" aria-label="本章导航"></aside>
+
+  </div>
+</main>
+
+<script src="../assets/js/bior-core.js"></script>
+<script src="../assets/js/data/course-toc.js"></script>
+<script src="../assets/js/data/chapter-config.js"></script>
+<script src="../assets/js/data/glossary-data.js"></script>
+<script src="../assets/js/data/datasets-data.js"></script>
+<script src="../assets/js/data/dataset-previews.js"></script>
+<script src="../assets/js/data/deliverables-data.js"></script>
+<script src="../assets/js/data/search-index.js"></script>
+<script src="../assets/js/highlight-r.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/listing.js"></script>
+<script src="../assets/js/stepper.js"></script>
+<script src="../assets/js/data-preview.js"></script>
+<script src="../assets/js/mastery.js"></script>
+<script src="../assets/js/quiz.js"></script>
+<script src="../assets/js/glossary.js"></script>
+<script src="../assets/js/presenter.js"></script>
+<script src="../assets/js/search.js"></script>
+<script src="../assets/js/pages/chapter.js"></script>
+</body>
+</html>
