@@ -1,159 +1,108 @@
-# bioR · 生物科研 R 语言工作台
+# bioR — R for Biology Research
 
-> 把 R 学成一条从实验台走到论文图的研究路线。
+An offline, zero-dependency teaching website that teaches the R language to biology students and researchers. Every chapter is bound to one continuous research project — a simulated plateau-pika hypoxia study — so syntax is always learned in service of a real analysis, from tidying lab records to publishing a figure and reproducing the whole pipeline.
 
-`bioR` 是一个面向生物学本科生、研究生和实验科研人员的 R 语言教学网站。它参考 `cpp_website/v2` 的「编辑部正文 + 代码实验台 + 学习地图」设计语言，但把每一章都绑定到一个连续的生物学科研课题：从整理实验记录、画探索图，到做统计检验、分析转录组，最后装配成一份可复现的报告。
-
-**设计状态**：设计文档完成，尚未开始实现。本文档集是后续开发的唯一入口。
+**Status:** v1.0.0 — built, audited, and shipped. 29 HTML pages, all generated outputs verified (see [docs/audit/phase0-audit.md](docs/audit/phase0-audit.md)). Chinese version of this file: [README.zh-CN.md](README.zh-CN.md). Developer documentation: [DEV.md](DEV.md).
 
 ---
 
-## 1. 这个网站解决什么问题
+## Quick start
 
-大多数 R 教程的问题是「语法是语法，科研是科研」：学完 `dplyr` 不知道怎样处理自己的样本表，学完 `ggplot2` 不知道怎么做出投稿级 Figure 1，学完 `t.test` 不知道怎样写 Methods 和 Results。
+No install, no server, no network. Double-click `index.html` — the site works from `file://`.
 
-`bioR` 的设计约束是：
+Optionally serve it locally:
 
-1. **每一章都从一个真实的科研问题开始**，语法只是解决这个问题的工具。
-2. **一条连续的研究主线贯穿 18 章**，每章产出一个交付物，最后拼成一份完整研究。
-3. **统计判断力优先于背函数**：假设、设计、效应量、置信区间、多重比较、伪重复，逐章建立。
-4. **所有代码、输出、图形都由脚本生成**，网页中不出现手写的「预期输出」。
-5. **零运行时依赖、离线可用**：双击 `index.html` 就能学，不需要服务器、CDN 或联网。
+```bash
+python tools/dev-server.py     # http://127.0.0.1:8765
+```
+
+To rebuild all generated content (data, figures, example outputs, search index), see [DEV.md](DEV.md).
 
 ---
 
-## 2. 设计支柱
+## What's inside
 
-| 支柱 | 含义 | 体现在哪里 |
+| Module | Scale | Notes |
 | --- | --- | --- |
-| 科研叙事 | 每章是一集「课题日志」，不是语法条目 | 章节封面、科研情境、交付物、课题工作台 |
-| 双轨语法 | tidyverse 为主轨，base R 为对照轨 | 代码卡片的「base R 对照」、速查表 |
-| 可复现 | 代码、数据、图、环境全部可重建 | 数据生成脚本、图表流水线、renv、Quarto 章 |
-| 判断力 | 先问设计，再选检验；报告效应量和区间 | 数据诊所、统计导航、每章「科研判断」块 |
-| 纸感阅读 | 纸/墨底、细线、留白，品牌色只做强调 | 设计系统、章节排版、打印样式 |
+| Core course | 18 chapters | 14 core + 4 advanced; ~45–55 study hours; one pika/hypoxia storyline |
+| BioViz (`bioviz.html`) | 9 chart recipes | Figure anatomy explorer, journal presets, palettes, submission checklist |
+| Bioinformatics (`bioinfo.html`) | 6 routes / 44 stations | Shell-vs-R role per station, package atlas, file-format guide |
+| Data Clinic (`clinic.html`) | 14 cases + 6 red flags | Symptom → diagnosis → prescription → prevention |
+| R Triage (`triage.html`) | 50 real errors | Captured live in R 4.5.2 by script; cause → fix → prevent |
+| Stats Navigator (`stats-nav.html`) | decision tree + 6 templates | Which test, effect size, reporting sentence |
+| Dataset Zoo (`datasets.html`) | 9 simulated datasets + 8 external sources | Data dictionaries, previews, chapter links |
+| Project Workbench (`project.html`) | 18 deliverables, 4 figure slots | Progress tracking, reproducibility checklist |
+| Cheat sheets (`cheatsheets.html`) | 36 cards, 7 categories | Copyable tables/code, printable |
+| Glossary (`glossary.html`) | 22 terms | R / statistics / biology views, formulas, chapter links |
+| Registered figures | 18 figures | Rendered from a registry; every caption reports n |
+
+Plus `about.html` (version table, build process, license notes).
+
+All teaching data is **simulated** with a fixed seed (20261027) — no real animal or patient data.
 
 ---
 
-## 3. 内容规模
+## How it stays honest
 
-| 模块 | 规模 | 说明 |
-| --- | --- | --- |
-| 主线课程 | 18 章 | 14 章核心 + 4 章进阶；约 45–55 学时 |
-| 生物绘图专区 | 1 个专栏 | 图鉴、选图决策树、期刊预设、配色、拆图 |
-| 生物信息专区 | 1 个专栏 | 6 条流程航线、包图谱、格式指南 |
-| 数据诊所 | 1 个专栏 | 12–14 个错误分析病例 |
-| 统计导航 | 1 个专栏 | 交互式检验选择树 + 报告模板 |
-| R 代码急救室 | 1 个专栏 | 40+ 条 R 报错的病因与修复 |
-| 数据集标本馆 | 1 个专栏 | 教学数据 + 开放数据入口 |
-| 课题工作台 | 1 个专栏 | 交付物、图表槽位、可复现清单 |
-| 速查表 | 36 张 | 含科研工具、统计决策、生信流程、期刊导出 |
-| 教学数据集 | 9 个数据文件（8 CSV + 1 Excel） | 全部模拟生成，固定随机种子 |
+1. **Nothing is hand-written.** Every `R console` output, statistic, p-value, and figure on the site is produced by a script in `tools/` and re-verified on every build (`check-examples: ALL PASS`).
+2. **Statistics before syntax.** Chapters teach design, assumptions, effect sizes, and CIs; the Data Clinic and Stats Navigator teach judgment.
+3. **Zero runtime dependencies.** Pure HTML/CSS/vanilla JS. No CDN, no webfonts, no in-browser R. Works offline from `file://`.
+4. **tidyverse first, base R alongside.** Every code card offers a base-R comparison.
+5. **English figure labels, Chinese explanations** — journal-ready graphics with native-language teaching.
 
 ---
 
-## 4. 文档索引
-
-| 文档 | 内容 | 读者 |
-| --- | --- | --- |
-| [docs/01-design-system.md](docs/01-design-system.md) | 视觉语言、设计令牌、排版、布局、组件、打印、深色模式、无障碍 | 设计师 / 前端 |
-| [docs/02-information-architecture.md](docs/02-information-architecture.md) | 站点地图、页面类型、导航、搜索、进度、首页与章节解剖 | 产品 / 前端 |
-| [docs/03-curriculum.md](docs/03-curriculum.md) | 18 章完整大纲、科研主线、数据集、每章交付物 | 内容 / 教研 |
-| [docs/04-specials.md](docs/04-specials.md) | 7 个专栏与 36 张速查表的详细设计 | 内容 / 产品 |
-| [docs/05-engineering.md](docs/05-engineering.md) | 目录结构、运行时模块、数据契约、图表流水线、校验 | 前端 / 全栈 |
-| [docs/06-authoring-guide.md](docs/06-authoring-guide.md) | 章节与组件的规范标记、写作规则、统计正确性规则 | 内容作者 |
-| [docs/07-roadmap.md](docs/07-roadmap.md) | 分阶段实施计划、验收标准、风险、工作量 | 项目负责人 |
-| [docs/08-adr.md](docs/08-adr.md) | 10 条关键架构决策及其代价 | 全体 |
-
-建议阅读顺序：`README → 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08`。
-
----
-
-## 5. 站点地图（规划）
+## Repository layout
 
 ```text
 bioR/
-├─ index.html                  研究路线首页
-├─ chapters/
-│  ├─ ch01-setup.html          第 1 章 从零开始：R、RStudio 与可复现项目
-│  ├─ ch02-vectors.html        第 2 章 向量与数据类型
-│  ├─ ch03-data-frames.html    第 3 章 数据框与 tidy 数据
-│  ├─ ch04-import-qc.html      第 4 章 导入、导出与数据质量
-│  ├─ ch05-functions.html      第 5 章 函数、控制流与模拟
-│  ├─ ch06-wrangling.html      第 6 章 数据整形
-│  ├─ ch07-reshape-joins.html  第 7 章 宽长转换与多表连接
-│  ├─ ch08-ggplot2.html        第 8 章 ggplot2 语法
-│  ├─ ch09-publication.html    第 9 章 出版级图形
-│  ├─ ch10-descriptive.html    第 10 章 描述统计与分布
-│  ├─ ch11-two-group.html      第 11 章 两组比较
-│  ├─ ch12-anova.html          第 12 章 多组比较与方差分析
-│  ├─ ch13-regression.html     第 13 章 回归与线性模型
-│  ├─ ch14-reproducible.html   第 14 章 可复现报告
-│  ├─ ch15-mixed-models.html   第 15 章 混合效应与重复测量（进阶）
-│  ├─ ch16-survival.html       第 16 章 生存分析（进阶）
-│  ├─ ch17-multivariate.html   第 17 章 多变量与聚类（进阶）
-│  └─ ch18-rnaseq.html         第 18 章 转录组差异分析（进阶）
-├─ bioviz.html                 生物绘图专区
-├─ bioinfo.html                生物信息专区
-├─ clinic.html                 数据诊所
-├─ stats-nav.html              统计导航
-├─ triage.html                 R 代码急救室
-├─ datasets.html               数据集标本馆
-├─ project.html                课题工作台
-├─ cheatsheets.html            速查表
-├─ glossary.html               术语表
-└─ assets/                     样式、脚本、数据、图形
+├─ index.html            Home: research route, continue-learning, workbench summary
+├─ chapters/             18 chapter pages (ch01 … ch18)
+├─ bioviz.html           BioViz special
+├─ bioinfo.html          Bioinformatics special
+├─ clinic.html           Data Clinic
+├─ triage.html           R Triage (real error cards)
+├─ stats-nav.html        Stats Navigator
+├─ datasets.html         Dataset Zoo
+├─ project.html          Project Workbench
+├─ cheatsheets.html      36 cheat-sheet cards
+├─ glossary.html         Glossary
+├─ about.html            About, build process, version table
+├─ assets/               css / js / data / figures / scripts (runtime assets)
+├─ data/                 Chapter deliverables (student output examples)
+├─ figures/              Chapter deliverable figures
+├─ docs/                 Design & engineering docs (Chinese) + audit log
+├─ tools/                R + Node build pipeline and audit scripts
+└─ .github/workflows/    CI: runs tools/build-all.sh on push
 ```
 
----
-
-## 6. 与 cpp_website/v2 的对应关系
-
-保留 v2 的骨架，替换内容与学科隐喻：
-
-| v2 | bioR | 说明 |
-| --- | --- | --- |
-| 纸/墨底 + 紫色强调 | 纸/墨底 + R 蓝 + 苔绿 | 紫改为 R 品牌蓝，绿色用于「生物学正确/已完成」状态 |
-| 12 章学习路线 | 18 章研究路线，分 4 个研究阶段 | 路线按「准备数据 → 探索 → 推断 → 组学与交付」组织 |
-| 章节封面 + 右栏 | 章节封面 + 右栏「科研问题 / 田野笔记 / 工具」 | 右栏新增「本章交付物」 |
-| Listing + 输出终端 | Listing + R console + Plot stage | 新增图形舞台与数据预览 |
-| 6 种讲解器引擎 | 7 种科研讲解器引擎 | vector / dataframe / pipeline / plot-grammar / stats / matrix / timeline |
-| 编译器错误博物馆 | R 代码急救室 | 报错原文 → 病因 → 修复 → 预防 |
-| 速查表卡盒 | 速查表卡盒（含科研工具） | 新增统计决策、期刊导出、生信流程、数据库 |
-| 排序赛道 | 生物绘图专区（图鉴） | 每个专栏一个隐喻 |
-| 考试易错点雷区 | 数据诊所（病例卡） | 从考试陷阱转为科研分析陷阱 |
+`tools/rlib/` (local R package library, ~750 MB) is git-ignored; rebuild it with `Rscript tools/setup-packages.R`.
 
 ---
 
-## 7. 关键工程决策（详见 ADR）
+## Build & checks
 
-1. **纯静态、零运行时依赖**，保持 `file://` 可打开。
-2. **v1 不在浏览器里运行 R**；代码卡片提供复制、输出终端、预渲染图形。可选的 WebR 沙盒作为后续实验，不进入主线。
-3. **数据与图都由 R 脚本生成**，网页中的输出不是手写的。
-4. **tidyverse 主轨 + base R 对照轨**，避免「只会管道、看不懂别人的代码」。
-5. **连续科研主线 + 模拟数据**，不涉及真实患者数据。
-6. **图形标签用英文、讲解用中文**，避免中文字体在不同系统/期刊排版中的问题。
-7. **统计报告以估计值和区间为中心**，p 值只是其中一项。
+One command regenerates and verifies everything:
 
----
+```bash
+bash tools/build-all.sh
+```
 
-## 8. 实现前必须遵守的三条硬规则
+Pipeline: generate data → validate data → render figures → render examples → **hard-compare outputs** → collect real R errors → node builders (previews, triage, search index, chapter scripts, cheat cards, clinic cards) → `validate.mjs`.
 
-1. **不发明输出**：任何 `R console` 文本、统计量、p 值、图形，都必须由 `tools/` 下的脚本生成并可复跑。
-2. **不制造伪重复**：教学数据的 `n` 必须与统计单位一致；重复测量、批次、个体嵌套要在数据字典中写清。
-3. **不把相关性写成因果**：所有回归/相关章节必须包含「相关不等于因果」和混杂因素的讨论。
+Delivery gate: `validate: 0 error(s), 0 warning(s)` and `check-examples: ALL PASS`.
+
+See [DEV.md](DEV.md) for environment setup, per-step commands, and the audit harness.
 
 ---
 
-## 9. 当前状态与下一步
+## Documentation
 
-- [x] 设计语言与组件清单
-- [x] 信息架构与页面类型
-- [x] 18 章课程大纲
-- [x] 专栏与速查表设计
-- [x] 数据契约与图表流水线
-- [x] 作者规范与验收标准
-- [ ] 设计令牌与页面骨架实现（Phase 0）
-- [ ] 教学数据生成脚本（Phase 0）
-- [ ] 第 1–6 章内容（Phase 1）
+- [DEV.md](DEV.md) — developer guide (English): environment, pipeline, contracts, audits, conventions.
+- `docs/01…08` — design system, IA, curriculum, specials, engineering contracts, authoring guide, roadmap, ADRs (Chinese).
+- [docs/audit/phase0-audit.md](docs/audit/phase0-audit.md) — full code + visual audit log of the finished site.
+- [README.zh-CN.md](README.zh-CN.md) — Chinese version of this README.
 
-下一步从 `docs/07-roadmap.md` 的 Phase 0 开始：先实现设计令牌、站点外壳、R 语法高亮、数据生成脚本和校验器，再写第一章。
+## License
+
+No license file yet. Add one before redistributing the content or code.
